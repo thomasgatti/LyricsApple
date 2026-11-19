@@ -53,6 +53,9 @@ final class NowPlayingViewModel {
     }
 
     @ObservationIgnored private let liveActivity = LiveActivityController()
+    @ObservationIgnored private let keepAlive = BackgroundKeepAlive()
+    @ObservationIgnored private var isInBackground = false
+    @ObservationIgnored private var nothingPlayingSince: Date?
     @ObservationIgnored private var lineTask: Task<Void, Never>?
     @ObservationIgnored private let auth: SpotifyAuthService
     @ObservationIgnored private let api: SpotifyAPIClient
@@ -104,11 +107,32 @@ final class NowPlayingViewModel {
         applyIdleTimer()
     }
 
+    /// L'app torna in primo piano: non serve più l'audio silenzioso.
+    func enterForeground() {
+        isInBackground = false
+        keepAlive.stop()
+        start()
+        applyIdleTimer()
+    }
+
+    /// iPhone bloccato o app in background: con la Live Activity attiva continuiamo a seguire il testo.
+    func enterBackground() {
+        isInBackground = true
+        guard showLiveActivity, auth.isAuthorized else {
+            stop()
+            return
+        }
+        start()
+        keepAlive.start()
+        if !keepAlive.isRunning { stop() }
+    }
+
     func stop() {
         pollTask?.cancel()
         pollTask = nil
         lineTask?.cancel()
         lineTask = nil
+        keepAlive.stop()
         applyIdleTimer()
         // In background iOS sospende l'app: lo diciamo nella Live Activity invece di lasciarla ferma.
         if showLiveActivity, let track = currentTrack {
@@ -239,8 +263,16 @@ final class NowPlayingViewModel {
 
             guard let snapshot, let track = snapshot.track else {
                 playback = .nothingPlaying
+                // In background, dopo 10 minuti senza musica smettiamo per non consumare batteria.
+                let since = nothingPlayingSince ?? Date()
+                nothingPlayingSince = since
+                if isInBackground, Date().timeIntervalSince(since) > 600 {
+                    stop()
+                    liveActivity.end()
+                }
                 return 5
             }
+            nothingPlayingSince = nil
             playback = .playing(snapshot)
             if track.id != currentTrackID {
                 currentTrackID = track.id

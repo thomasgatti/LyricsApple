@@ -65,6 +65,9 @@ targets:
         UIUserInterfaceStyle: Dark
         # Live Activity: testo su schermata di blocco, Dynamic Island e CarPlay.
         NSSupportsLiveActivities: true
+        # Audio silenzioso in background: tiene viva l'app (e la Live Activity) a schermo bloccato.
+        UIBackgroundModes:
+          - audio
 
   LyricsWidgets:
     type: app-extension

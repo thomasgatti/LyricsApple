@@ -34,10 +34,14 @@ struct NowPlayingView: View {
             SafetyNoticeView { safetyNoticeAccepted = true }
                 .interactiveDismissDisabled()
         }
-        .onAppear { model.start() }
+        .onAppear { model.enterForeground() }
         .onDisappear { model.stop() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { model.start() } else { model.stop() }
+            switch phase {
+            case .active: model.enterForeground()
+            case .background: model.enterBackground()
+            default: break // .inactive: Centro di Controllo, notifiche... continuiamo normalmente
+            }
         }
         .onChange(of: network.isOnline) { _, isOnline in
             if isOnline { model.networkRestored() }

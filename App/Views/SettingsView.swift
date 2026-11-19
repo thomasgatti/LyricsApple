@@ -37,7 +37,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Live Activity")
                 } footer: {
-                    Text("Mostra la riga in corso sulla schermata di blocco, nella Dynamic Island e, con iOS 26, sullo schermo CarPlay. Si aggiorna finché Lyrics è aperta sull'iPhone. Da usare solo ad auto ferma o per i passeggeri.")
+                    Text("Mostra la riga in corso sulla schermata di blocco, nella Dynamic Island e, con iOS 26, sullo schermo CarPlay. Continua anche a iPhone bloccato (Lyrics resta attiva in sottofondo con un audio silenzioso: consuma un po' più di batteria). Si ferma da sola dopo 10 minuti senza musica. Da usare solo ad auto ferma o per i passeggeri.")
                 }
 
                 Section("Sicurezza") {
