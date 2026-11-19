@@ -22,6 +22,7 @@ enum SpotifyAuthError: LocalizedError, Equatable {
     case tokenRequestFailed(status: Int, body: String)
     case notSignedIn
     case sessionExpired
+    case spotifyAppFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -43,8 +44,18 @@ enum SpotifyAuthError: LocalizedError, Equatable {
             return "Non sei collegato a Spotify."
         case .sessionExpired:
             return "La sessione Spotify è scaduta. Ricollegati."
+        case .spotifyAppFailed(let detail):
+            return "L'accesso tramite l'app Spotify non è riuscito (\(detail)). Prova «Accedi dal browser»."
         }
     }
+}
+
+/// Come collegare l'account Spotify.
+enum SpotifySignInMethod: Equatable {
+    /// Tramite l'app Spotify installata: nessuna password, funziona con account Google, Apple e Facebook.
+    case spotifyApp
+    /// Tramite la pagina web di Spotify (Safari): email/password o "Continua con Google/Apple/Facebook".
+    case browser
 }
 
 /// Gestisce login Spotify (OAuth 2.0 Authorization Code + PKCE), salvataggio sicuro e refresh dei token.
@@ -52,10 +63,13 @@ enum SpotifyAuthError: LocalizedError, Equatable {
 @Observable
 final class SpotifyAuthService {
     private(set) var tokens: SpotifyTokens?
-    private(set) var isSigningIn = false
+    /// Metodo di accesso in corso, `nil` se nessun accesso è in corso.
+    private(set) var signInInProgress: SpotifySignInMethod?
 
+    var isSigningIn: Bool { signInInProgress != nil }
     var isAuthorized: Bool { tokens != nil }
 
+    @ObservationIgnored private let appAuthenticator = SpotifyAppAuthenticator()
     @ObservationIgnored private let keychain: KeychainStore
     @ObservationIgnored private let tokenKey = "spotify.tokens"
     @ObservationIgnored private let urlSession: URLSession
@@ -77,13 +91,37 @@ final class SpotifyAuthService {
 
     // MARK: - Login
 
-    func signIn() async throws {
+    /// `true` se sul telefono c'è l'app Spotify (accesso con un tocco).
+    var isSpotifyAppInstalled: Bool { SpotifyAppAuthenticator.isSpotifyInstalled }
+
+    func signIn(using method: SpotifySignInMethod) async throws {
         let clientID = AppConfig.spotifyClientID
         guard !clientID.isEmpty else { throw SpotifyAuthError.missingClientID }
+        guard signInInProgress == nil else { return }
 
-        isSigningIn = true
-        defer { isSigningIn = false }
+        signInInProgress = method
+        defer { signInInProgress = nil }
 
+        switch method {
+        case .spotifyApp:
+            store(try await appAuthenticator.authorize(clientID: clientID))
+        case .browser:
+            try await signInWithBrowser(clientID: clientID)
+        }
+    }
+
+    /// Annulla un accesso in corso (es. l'utente è tornato senza confermare in Spotify).
+    func cancelSignIn() {
+        appAuthenticator.cancel()
+        webSession?.cancel()
+    }
+
+    /// Gestisce il ritorno dall'app Spotify (`lyricsapple://spotify-callback?...`).
+    func handleOpenURL(_ url: URL) {
+        appAuthenticator.handleOpenURL(url)
+    }
+
+    private func signInWithBrowser(clientID: String) async throws {
         let verifier = PKCE.makeVerifier()
         let state = PKCE.makeVerifier(byteCount: 16)
 
@@ -199,7 +237,8 @@ final class SpotifyAuthService {
                 }
             }
             session.presentationContextProvider = anchorProvider
-            // false = riusa i cookie di Safari: se sei già loggato su Spotify basta un tap.
+            // false = condivide i cookie di Safari: se in Safari sei già collegato a Spotify o a Google,
+            // "Continua con Google" non chiede di nuovo la password.
             session.prefersEphemeralWebBrowserSession = false
             webSession = session
             if !session.start() {

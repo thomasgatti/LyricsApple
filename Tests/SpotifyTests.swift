@@ -97,3 +97,10 @@ final class PlaybackDecodingTests: XCTestCase {
         XCTAssertEqual(NowPlayingViewModel.nextPollDelay(for: snapshot, now: reference.addingTimeInterval(149)), 1.8, accuracy: 0.01)
     }
 }
+
+final class SignInMessagesTests: XCTestCase {
+    func testSpotifyAppFailureSuggestsBrowser() {
+        let message = SpotifyAuthError.spotifyAppFailed("test").errorDescription ?? ""
+        XCTAssertTrue(message.contains("browser"))
+    }
+}

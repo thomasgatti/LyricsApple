@@ -16,9 +16,10 @@ App iPhone gratuita che riconosce il brano in riproduzione sul tuo account Spoti
    - App name: `Lyrics` (o quello che vuoi)
    - App description: `Testi per uso personale`
    - Redirect URI: `lyricsapple://spotify-callback` (copialo esattamente), poi premi **Add**
-   - API utilizzate: spunta **Web API**
+   - API utilizzate: spunta **Web API** e **iOS**
    - Accetta i termini e salva.
 3. Nella pagina dell'app apri **Settings** e copia il **Client ID**.
+   Sempre in **Settings → Edit**, nella sezione iOS, aggiungi come **Bundle ID** lo stesso valore che metterai in `APP_BUNDLE_ID` (es. `com.tuonome.lyricsapple`). Serve per l'accesso tramite l'app Spotify.
 4. Apri **User Management** e aggiungi nome ed email dell'account Spotify che userà l'app (anche il tuo). Puoi aggiungere **massimo 5 persone**.
 
 ## Passo 2: inserisci il Client ID
@@ -51,10 +52,17 @@ open LyricsApple.xcodeproj
 > Con l'Apple ID gratuito l'app funziona per **7 giorni**. Poi basta ricollegare l'iPhone e premere di nuovo ▶︎. Con l'Apple Developer Program (99 $/anno) la firma dura un anno e puoi usare TestFlight.
 
 ## Passo 5: prova
-1. Apri **Lyrics**, leggi l'avviso di sicurezza e tocca **Collega Spotify**, poi accedi. Lo fai una volta sola.
+1. Apri **Lyrics** e collega Spotify (vedi sotto). Lo fai una volta sola.
 2. Avvia un brano su Spotify, da qualunque dispositivo collegato allo stesso account: iPhone, CarPlay, computer.
 3. In pochi secondi compaiono copertina, titolo e testo. La riga cantata è evidenziata.
 4. Se il testo è in ritardo o in anticipo: **⚙︎ → Anticipo del testo**.
+
+### Accesso con Google, Apple o Facebook
+Se il tuo account Spotify è collegato a Google (o Apple, Facebook) e non ha una password Spotify:
+- **App Spotify installata (consigliato)**: tocca **Continua con l'app Spotify**. Si apre Spotify, dove sei già collegato: tocca **Accetta** e torni a Lyrics. Non inserisci nessuna password.
+- **Senza app Spotify**, oppure se il metodo sopra non funziona: tocca **Accedi dal browser** e, nella pagina di Spotify, scegli **Continua con Google**. iOS chiede prima «Lyrics vuole usare spotify.com per accedere»: tocca **Continua**. Se in Safari sei già collegato a Google, ti basta scegliere l'account.
+
+Dopo il primo accesso l'app resta collegata: il rinnovo avviene da solo.
 
 ### In auto con CarPlay
 - Il guidatore usa Spotify su CarPlay come sempre.
@@ -69,7 +77,9 @@ Se carichi il progetto su GitHub, il workflow `.github/workflows/ios.yml` lo com
 |---|---|
 | "Manca il Client ID Spotify" | Passo 2, poi ricompila |
 | "INVALID_CLIENT: Invalid redirect URI" su Spotify | Il Redirect URI nella dashboard deve essere esattamente `lyricsapple://spotify-callback` |
-| "Spotify ha negato l'accesso…" (403) | Aggiungi l'email in User Management (Passo 1.4) |
+| "Spotify ha negato l'accesso…" (403) | Aggiungi l'email in User Management (Passo 1.4). Con un account Google, usa l'email dell'account Google |
+| "L'accesso tramite l'app Spotify non è riuscito" | Controlla il Bundle ID nella sezione iOS della dashboard (Passo 1.3), oppure usa **Accedi dal browser** |
+| Torni a Lyrics senza aver confermato | Tocca **Annulla** o **Usa il browser** |
 | "Niente in riproduzione" | Avvia un brano; le sessioni private e i podcast non sono supportati |
 | "Testo non disponibile" | LRCLIB non ha quel brano; tocca "Riprova" più tardi |
 | "Failed to register bundle identifier" in Xcode | Cambia `APP_BUNDLE_ID` con un valore più unico |

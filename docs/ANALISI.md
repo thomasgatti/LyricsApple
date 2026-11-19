@@ -39,7 +39,7 @@ Data verifica: 19 novembre 2026. Fonti in fondo al documento.
 ### Spotify
 - **Web API** `GET /v1/me/player/currently-playing`: restituisce titolo, artisti, album, copertina, durata, posizione e stato di play/pausa. Funziona anche con account Free.
 - **OAuth 2.0 + PKCE**: non serve un client secret né un server. Il refresh token permette di collegarsi una volta sola. I token sono salvati nel Portachiavi.
-- **App Remote SDK (iOS)**: dà eventi in tempo reale, ma richiede l'app Spotify attiva e si disconnette spesso in background. In più aggiunge un framework binario. Il polling della Web API è più semplice e robusto per questo scopo. Scartato per la v1.
+- **App Remote SDK (iOS)**: per leggere la riproduzione dà eventi in tempo reale, ma richiede l'app Spotify attiva e si disconnette spesso in background: per questo usiamo il polling della Web API. Dell'SDK ufficiale usiamo solo `SPTSessionManager` per il **login tramite l'app Spotify** (PKCE, senza server). Così gli account collegati a Google, Apple o Facebook si collegano con un tocco, senza reinserire credenziali. Se l'app non è installata, si usa la pagina web di Spotify in Safari.
 - **Development Mode (da febbraio 2026)**: il proprietario dell'app deve avere **Spotify Premium**, e l'app può essere usata da **massimo 5 utenti**, registrati a mano nella dashboard. Gli utenti non devono essere per forza Premium.
 - **Extended Quota (per il pubblico)**: dal 15 maggio 2025 è riservata a organizzazioni con servizi già avviati e un'ampia base di utenti. Secondo fonti di terze parti la soglia è 250k utenti attivi al mese. Un'app personale non ci arriva.
 - **API ufficiale per i testi**: **non esiste**. I testi nell'app Spotify (Musixmatch) non sono accessibili.

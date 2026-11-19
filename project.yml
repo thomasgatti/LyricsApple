@@ -14,12 +14,20 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
 
+packages:
+  # SDK ufficiale Spotify: usato solo per il login tramite l'app Spotify.
+  SpotifyiOS:
+    url: https://github.com/spotify/ios-sdk
+    exactVersion: 5.0.1
+
 targets:
   LyricsApple:
     type: application
     platform: iOS
     sources:
       - path: App
+    dependencies:
+      - package: SpotifyiOS
     configFiles:
       Debug: Config/Secrets.xcconfig
       Release: Config/Secrets.xcconfig
@@ -38,6 +46,14 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         SpotifyClientID: $(SPOTIFY_CLIENT_ID)
+        # Permette di capire se l'app Spotify è installata.
+        LSApplicationQueriesSchemes:
+          - spotify
+        # L'app Spotify ci riapre con lyricsapple://spotify-callback dopo il consenso.
+        CFBundleURLTypes:
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).spotify-auth
+            CFBundleURLSchemes:
+              - lyricsapple
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         UIApplicationSceneManifest:

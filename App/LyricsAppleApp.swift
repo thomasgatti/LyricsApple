@@ -20,6 +20,7 @@ struct LyricsAppleApp: App {
                 .environment(network)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
+                .onOpenURL { url in auth.handleOpenURL(url) }
         }
     }
 }
