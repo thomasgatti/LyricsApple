@@ -32,6 +32,14 @@ struct SettingsView: View {
                     Toggle("Mantieni lo schermo acceso", isOn: $bindableModel.keepScreenOn)
                 }
 
+                Section {
+                    Toggle("Testo su CarPlay e schermata di blocco", isOn: $bindableModel.showLiveActivity)
+                } header: {
+                    Text("Live Activity")
+                } footer: {
+                    Text("Mostra la riga in corso sulla schermata di blocco, nella Dynamic Island e, con iOS 26, sullo schermo CarPlay. Si aggiorna finché Lyrics è aperta sull'iPhone. Da usare solo ad auto ferma o per i passeggeri.")
+                }
+
                 Section("Sicurezza") {
                     Label("Non leggere i testi mentre guidi. L'app è pensata per i passeggeri o per l'auto ferma e non mostra testi sullo schermo CarPlay.", systemImage: "car")
                         .font(.footnote)

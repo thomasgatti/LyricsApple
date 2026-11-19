@@ -7,3 +7,4 @@ xcuserdata/
 Config/Secrets.xcconfig
 *.ipa
 Installazione/
+Widgets/Info.plist

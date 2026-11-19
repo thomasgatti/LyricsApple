@@ -24,6 +24,7 @@ final class NowPlayingViewModel {
     private enum Keys {
         static let syncOffset = "syncOffset"
         static let keepScreenOn = "keepScreenOn"
+        static let showLiveActivity = "showLiveActivity"
     }
 
     private(set) var playback: PlaybackState = .loading
@@ -43,6 +44,16 @@ final class NowPlayingViewModel {
         }
     }
 
+    /// Live Activity con la riga corrente: schermata di blocco, Dynamic Island e CarPlay (iOS 26).
+    var showLiveActivity: Bool {
+        didSet {
+            UserDefaults.standard.set(showLiveActivity, forKey: Keys.showLiveActivity)
+            if !showLiveActivity { liveActivity.end() }
+        }
+    }
+
+    @ObservationIgnored private let liveActivity = LiveActivityController()
+    @ObservationIgnored private var lineTask: Task<Void, Never>?
     @ObservationIgnored private let auth: SpotifyAuthService
     @ObservationIgnored private let api: SpotifyAPIClient
     @ObservationIgnored private let lyricsService: LyricsService
@@ -58,6 +69,7 @@ final class NowPlayingViewModel {
         let defaults = UserDefaults.standard
         self.syncOffset = defaults.double(forKey: Keys.syncOffset)
         self.keepScreenOn = defaults.object(forKey: Keys.keepScreenOn) as? Bool ?? true
+        self.showLiveActivity = defaults.object(forKey: Keys.showLiveActivity) as? Bool ?? true
     }
 
     // MARK: - Stato derivato
@@ -86,17 +98,34 @@ final class NowPlayingViewModel {
         pollTask = Task { [weak self] in
             await self?.pollLoop()
         }
+        lineTask = Task { [weak self] in
+            await self?.lineLoop()
+        }
         applyIdleTimer()
     }
 
     func stop() {
         pollTask?.cancel()
         pollTask = nil
+        lineTask?.cancel()
+        lineTask = nil
         applyIdleTimer()
+        // In background iOS sospende l'app: lo diciamo nella Live Activity invece di lasciarla ferma.
+        if showLiveActivity, let track = currentTrack {
+            liveActivity.show(.init(
+                title: track.title,
+                artist: track.artistLine,
+                currentLine: "Apri Lyrics per seguire il testo",
+                nextLine: "",
+                isPlaying: false,
+                hasLyrics: false
+            ))
+        }
     }
 
     func reset() {
         stop()
+        liveActivity.end()
         lyricsTask?.cancel()
         currentTrackID = nil
         playback = .loading
@@ -117,6 +146,81 @@ final class NowPlayingViewModel {
         bannerMessage = nil
         if case .failed = lyricsState { retryLyrics() }
         refreshNow()
+    }
+
+    // MARK: - Live Activity
+
+    /// Aggiorna la Live Activity esattamente quando inizia la riga successiva.
+    private func lineLoop() async {
+        while !Task.isCancelled {
+            let delay = refreshLiveActivity(now: Date())
+            try? await Task.sleep(nanoseconds: UInt64(max(delay, 0.1) * 1_000_000_000))
+        }
+    }
+
+    private func refreshLiveActivity(now: Date) -> TimeInterval {
+        guard showLiveActivity else { return 1 }
+        guard let snapshot, snapshot.track != nil else {
+            liveActivity.end()
+            return 1
+        }
+        let result = Self.liveActivityState(
+            snapshot: snapshot,
+            lyricsState: lyricsState,
+            position: playbackPosition(at: now)
+        )
+        if let state = result.state { liveActivity.show(state) }
+        return result.nextChange
+    }
+
+    /// Calcola cosa mostrare e fra quanti secondi cambierà (funzione pura, testabile).
+    nonisolated static func liveActivityState(
+        snapshot: PlaybackSnapshot,
+        lyricsState: LyricsState,
+        position: TimeInterval
+    ) -> (state: LyricsActivityAttributes.ContentState?, nextChange: TimeInterval) {
+        guard let track = snapshot.track else { return (nil, 1) }
+
+        var current = ""
+        var next = ""
+        var hasLyrics = false
+        var nextChange: TimeInterval = 1
+
+        switch lyricsState {
+        case .loaded(let lyrics) where lyrics.isSynced:
+            hasLyrics = true
+            let index = lyrics.lineIndex(at: position)
+            let following = (index ?? -1) + 1
+            current = index.map { lyrics.lines[$0].text } ?? "♪"
+            if lyrics.lines.indices.contains(following) {
+                next = lyrics.lines[following].text
+                if snapshot.isPlaying, let start = lyrics.lines[following].time {
+                    nextChange = min(1, max(0.05, start - position + 0.02))
+                }
+            }
+        case .loaded(let lyrics):
+            hasLyrics = true
+            current = lyrics.lines.first { !$0.text.isEmpty }?.text ?? "♪"
+            next = "Testo non sincronizzato: aprilo sull'iPhone"
+        case .idle, .loading:
+            current = "Cerco il testo…"
+        case .instrumental:
+            current = "♪ Brano strumentale"
+        case .notFound:
+            current = "Testo non disponibile"
+        case .failed:
+            current = "Testo non caricato"
+        }
+
+        let state = LyricsActivityAttributes.ContentState(
+            title: track.title,
+            artist: track.artistLine,
+            currentLine: current.isEmpty ? "♪" : current,
+            nextLine: next,
+            isPlaying: snapshot.isPlaying,
+            hasLyrics: hasLyrics
+        )
+        return (state, nextChange)
     }
 
     private func pollLoop() async {
