@@ -41,7 +41,7 @@ struct SettingsView: View {
                 }
 
                 Section("Sicurezza") {
-                    Label("Non leggere i testi mentre guidi. L'app è pensata per i passeggeri o per l'auto ferma e non mostra testi sullo schermo CarPlay.", systemImage: "car")
+                    Label("Non leggere i testi mentre guidi. L'app è pensata per i passeggeri o per l'auto ferma, anche quando il testo compare sullo schermo CarPlay.", systemImage: "car")
                         .font(.footnote)
                 }
 
@@ -84,7 +84,7 @@ struct SafetyNoticeView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Label("Chi guida non deve leggere i testi.", systemImage: "hand.raised")
                 Label("Usa l'app come passeggero o ad auto ferma.", systemImage: "person.2")
-                Label("Sullo schermo CarPlay continuerai a vedere Spotify: i testi restano sull'iPhone.", systemImage: "iphone")
+                Label("Se attivi la Live Activity, la riga in corso compare anche su CarPlay: leggila solo ad auto ferma.", systemImage: "iphone")
             }
             .font(.callout)
             Spacer()
