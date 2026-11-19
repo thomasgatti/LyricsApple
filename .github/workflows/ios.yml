@@ -35,3 +35,49 @@ jobs:
             -scheme LyricsApple \
             -destination "id=$UDID" \
             CODE_SIGNING_ALLOWED=NO
+
+  # Crea il file LyricsApple.ipa NON firmato, da installare gratis con AltStore (o Sideloadly)
+  # usando un Apple ID gratuito. Il file si scarica dalla pagina della build, sezione "Artifacts".
+  ipa:
+    runs-on: macos-15
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installa XcodeGen
+        run: brew install xcodegen
+
+      - name: Prepara configurazione con il Client ID
+        env:
+          # Il Client ID non è un segreto (con PKCE finisce comunque dentro l'app).
+          # Se esiste il secret SPOTIFY_CLIENT_ID, ha la precedenza.
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID || 'b21a92ba171d44ffb9e6c7b22958a270' }}
+        run: |
+          printf 'SPOTIFY_CLIENT_ID = %s\nAPP_BUNDLE_ID = com.thomasgatti.lyricsapple\nDEVELOPMENT_TEAM =\n' "$SPOTIFY_CLIENT_ID" > Config/Secrets.xcconfig
+
+      - name: Genera progetto Xcode
+        run: xcodegen generate
+
+      - name: Compila per iPhone (senza firma)
+        run: |
+          xcodebuild build \
+            -project LyricsApple.xcodeproj \
+            -scheme LyricsApple \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Crea LyricsApple.ipa
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/LyricsApple.app Payload/
+          ls Payload/LyricsApple.app/Frameworks || true
+          zip -qry LyricsApple.ipa Payload
+          ls -la LyricsApple.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LyricsApple-ipa
+          path: LyricsApple.ipa
+          retention-days: 30
