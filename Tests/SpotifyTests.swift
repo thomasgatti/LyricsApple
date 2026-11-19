@@ -6,7 +6,7 @@ final class PKCETests: XCTestCase {
     func testChallengeMatchesRFC7636() {
         XCTAssertEqual(
             PKCE.challenge(for: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"),
-            "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuwlkd5KkiQ"
+            "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
         )
     }
 
