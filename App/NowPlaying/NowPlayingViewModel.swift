@@ -191,7 +191,8 @@ final class NowPlayingViewModel {
         let result = Self.liveActivityState(
             snapshot: snapshot,
             lyricsState: lyricsState,
-            position: playbackPosition(at: now)
+            position: playbackPosition(at: now),
+            now: now
         )
         if let state = result.state { liveActivity.show(state) }
         return result.nextChange
@@ -201,26 +202,48 @@ final class NowPlayingViewModel {
     nonisolated static func liveActivityState(
         snapshot: PlaybackSnapshot,
         lyricsState: LyricsState,
-        position: TimeInterval
+        position: TimeInterval,
+        now: Date = Date()
     ) -> (state: LyricsActivityAttributes.ContentState?, nextChange: TimeInterval) {
         guard let track = snapshot.track else { return (nil, 1) }
 
         var current = ""
         var next = ""
+        var previous = ""
+        var afterNext = ""
+        var lineIndex = -1
+        var lineStart: Date?
+        var lineEnd: Date?
         var hasLyrics = false
         var nextChange: TimeInterval = 1
+
+        // Istante (sull'orologio dell'iPhone) in cui il brano è partito: serve alle barre che si muovono da sole.
+        let playStart = now.addingTimeInterval(-position)
+        let songStart: Date? = snapshot.isPlaying ? playStart : nil
+        let songEnd: Date? = snapshot.isPlaying ? playStart.addingTimeInterval(max(track.duration, position + 1)) : nil
 
         switch lyricsState {
         case .loaded(let lyrics) where lyrics.isSynced:
             hasLyrics = true
+            let lines = lyrics.lines
             let index = lyrics.lineIndex(at: position)
             let following = (index ?? -1) + 1
-            current = index.map { lyrics.lines[$0].text } ?? "♪"
-            if lyrics.lines.indices.contains(following) {
-                next = lyrics.lines[following].text
-                if snapshot.isPlaying, let start = lyrics.lines[following].time {
+            lineIndex = index ?? -1
+            current = index.map { lines[$0].text } ?? "♪"
+            if let index, index > 0 { previous = lines[index - 1].text }
+            if lines.indices.contains(following + 1) { afterNext = lines[following + 1].text }
+            if lines.indices.contains(following) {
+                next = lines[following].text
+                if snapshot.isPlaying, let start = lines[following].time {
                     nextChange = min(1, max(0.05, start - position + 0.02))
                 }
+            }
+            if snapshot.isPlaying {
+                let start = index.flatMap { lines[$0].time } ?? 0
+                let end = lines.indices.contains(following) ? lines[following].time : nil
+                lineStart = playStart.addingTimeInterval(start)
+                lineEnd = end.map { playStart.addingTimeInterval($0) } ?? songEnd
+                if let s = lineStart, let e = lineEnd, e <= s { lineStart = nil; lineEnd = nil }
             }
         case .loaded(let lyrics):
             hasLyrics = true
@@ -242,7 +265,14 @@ final class NowPlayingViewModel {
             currentLine: current.isEmpty ? "♪" : current,
             nextLine: next,
             isPlaying: snapshot.isPlaying,
-            hasLyrics: hasLyrics
+            hasLyrics: hasLyrics,
+            previousLine: previous,
+            afterNextLine: afterNext,
+            lineIndex: lineIndex,
+            lineStart: lineStart,
+            lineEnd: lineEnd,
+            songStart: songStart,
+            songEnd: songEnd
         )
         return (state, nextChange)
     }

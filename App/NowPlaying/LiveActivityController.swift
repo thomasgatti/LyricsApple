@@ -21,7 +21,7 @@ final class LiveActivityController {
     }
 
     func show(_ state: State) {
-        guard state != lastState else { return }
+        if let lastState, state.isEquivalent(to: lastState), activity?.activityState == .active { return }
         lastState = state
         // Se non riceve aggiornamenti per 10 minuti, iOS la mostra come "non aggiornata".
         let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(10 * 60))

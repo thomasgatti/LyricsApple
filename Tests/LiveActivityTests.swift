@@ -28,6 +28,37 @@ final class LiveActivityStateTests: XCTestCase {
         XCTAssertEqual(near.nextChange, 0.32, accuracy: 0.001)
     }
 
+    func testScrollingLinesAndKaraokeTimes() throws {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let state = try XCTUnwrap(NowPlayingViewModel.liveActivityState(
+            snapshot: snapshot(), lyricsState: .loaded(lyrics), position: 16, now: now
+        ).state)
+        XCTAssertEqual(state.previousLine, "Prima")
+        XCTAssertEqual(state.currentLine, "Seconda")
+        XCTAssertEqual(state.nextLine, "Terza")
+        XCTAssertEqual(state.afterNextLine, "")
+        XCTAssertEqual(state.lineIndex, 1)
+        // Il brano è partito 16 s fa: la riga 2 va da 15 a 20 s.
+        XCTAssertEqual(try XCTUnwrap(state.lineStart).timeIntervalSince(now), -1, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(state.lineEnd).timeIntervalSince(now), 4, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(state.songEnd).timeIntervalSince(now), 184, accuracy: 0.001)
+
+        let paused = try XCTUnwrap(NowPlayingViewModel.liveActivityState(
+            snapshot: snapshot(playing: false), lyricsState: .loaded(lyrics), position: 16, now: now
+        ).state)
+        XCTAssertNil(paused.lineStart)
+        XCTAssertNil(paused.songStart)
+    }
+
+    func testSmallTimeDifferencesDoNotTriggerUpdates() throws {
+        let now = Date()
+        let a = try XCTUnwrap(NowPlayingViewModel.liveActivityState(snapshot: snapshot(), lyricsState: .loaded(lyrics), position: 16, now: now).state)
+        let b = try XCTUnwrap(NowPlayingViewModel.liveActivityState(snapshot: snapshot(), lyricsState: .loaded(lyrics), position: 16, now: now.addingTimeInterval(0.2)).state)
+        XCTAssertTrue(a.isEquivalent(to: b))
+        let c = try XCTUnwrap(NowPlayingViewModel.liveActivityState(snapshot: snapshot(), lyricsState: .loaded(lyrics), position: 21, now: now).state)
+        XCTAssertFalse(a.isEquivalent(to: c))
+    }
+
     func testBeforeFirstLineShowsMusicNote() throws {
         let state = try XCTUnwrap(NowPlayingViewModel.liveActivityState(snapshot: snapshot(), lyricsState: .loaded(lyrics), position: 2).state)
         XCTAssertEqual(state.currentLine, "♪")
