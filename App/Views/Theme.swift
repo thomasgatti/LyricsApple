@@ -19,19 +19,23 @@ struct ArtworkBackground: View {
     let artworkURL: URL?
 
     var body: some View {
-        ZStack {
-            Theme.backgroundGradient
-            if let artworkURL {
-                AsyncImage(url: artworkURL) { image in
-                    image.resizable().scaledToFill().blur(radius: 70).opacity(0.85)
-                } placeholder: {
-                    Color.clear
+        // L'immagine "fill" è sempre più grande dello schermo: la mettiamo in overlay su un
+        // contenitore che occupa esattamente lo spazio disponibile e la ritagliamo,
+        // così non allarga la schermata (il testo usciva dai bordi).
+        Theme.backgroundGradient
+            .overlay {
+                if let artworkURL {
+                    AsyncImage(url: artworkURL) { image in
+                        image.resizable().scaledToFill().blur(radius: 70).opacity(0.85)
+                    } placeholder: {
+                        Color.clear
+                    }
+                    .transition(.opacity)
                 }
-                .transition(.opacity)
             }
-            Color.black.opacity(0.45)
-        }
-        .ignoresSafeArea()
+            .overlay { Color.black.opacity(0.45) }
+            .clipped()
+            .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.8), value: artworkURL)
     }
 }

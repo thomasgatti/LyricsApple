@@ -9,19 +9,20 @@ struct NowPlayingView: View {
     @State private var showSettings = false
 
     var body: some View {
-        ZStack {
-            ArtworkBackground(artworkURL: model.currentTrack?.artworkURL)
-
-            VStack(spacing: 0) {
-                if !network.isOnline {
-                    StatusBanner(text: "Nessuna connessione", systemImage: "wifi.slash")
-                } else if let message = model.bannerMessage {
-                    StatusBanner(text: message, systemImage: "exclamationmark.circle")
-                }
-                content
+        VStack(spacing: 0) {
+            if !network.isOnline {
+                StatusBanner(text: "Nessuna connessione", systemImage: "wifi.slash")
+            } else if let message = model.bannerMessage {
+                StatusBanner(text: message, systemImage: "exclamationmark.circle")
             }
-            .animation(.easeInOut, value: network.isOnline)
-            .animation(.easeInOut, value: model.bannerMessage)
+            content
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeInOut, value: network.isOnline)
+        .animation(.easeInOut, value: model.bannerMessage)
+        // Lo sfondo è "dietro" il contenuto e non ne influenza più la larghezza.
+        .background {
+            ArtworkBackground(artworkURL: model.currentTrack?.artworkURL)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
