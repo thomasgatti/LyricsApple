@@ -4,7 +4,28 @@ App iPhone gratuita che riconosce il brano in riproduzione sul tuo account Spoti
 
 > **Sicurezza e regole Apple**: i testi **non** compaiono sullo schermo CarPlay. Apple lo vieta e chi guida non deve leggerli. L'app è pensata per i passeggeri o per l'auto ferma. Dettagli in [docs/ANALISI.md](docs/ANALISI.md).
 
-## Cosa ti serve
+## Installazione gratuita da Windows (senza Mac)
+GitHub crea il file dell'app, `LyricsApple.ipa`, a ogni modifica. Lo installi con **AltStore**, un programma gratuito e open source, usando il tuo **Apple ID gratuito**. Non si paga nulla.
+
+**Una volta sola, sul PC:**
+1. Installa **iTunes** e **iCloud** scaricandoli dal sito Apple, *non* dal Microsoft Store: apple.com/itunes e support.apple.com/HT204283. AltServer funziona solo con queste versioni.
+2. Scarica **AltServer per Windows** da https://altstore.io, installalo e avvialo: compare un'icona a forma di rombo vicino all'orologio.
+3. Collega l'iPhone con il cavo, sbloccalo e tocca **Autorizza**. In iTunes seleziona l'iPhone e spunta **Sincronizza con questo iPhone via Wi-Fi**: servirà per i rinnovi automatici.
+4. Clicca l'icona di AltServer, poi **Install AltStore** e scegli il tuo iPhone. Inserisci il tuo Apple ID: viene usato solo per parlare con Apple, per creare il certificato gratuito.
+5. Sull'iPhone vai in **Impostazioni → Generali → VPN e gestione dispositivi**, tocca il tuo Apple ID e scegli **Autorizza**. Poi vai in **Impostazioni → Privacy e sicurezza → Modalità sviluppatore → Attiva** e riavvia l'iPhone.
+
+**Installare Lyrics:**
+1. Copia `LyricsApple.ipa` sull'iPhone, ad esempio mettendolo in OneDrive o iCloud Drive dal PC.
+2. Apri **AltStore** sull'iPhone, vai su **My Apps**, tocca **+** e scegli `LyricsApple.ipa`.
+3. Fatto: Lyrics compare nella schermata Home.
+
+**Ogni 7 giorni** l'app scade, perché è firmata con un account gratuito. Con il PC acceso e AltServer aperto sulla stessa rete Wi-Fi, AltStore la rinnova da solo. Puoi anche farlo a mano da **My Apps → Refresh All**.
+
+Limiti dell'Apple ID gratuito: massimo 3 app installate in questo modo, AltStore compreso.
+
+> Con AltStore l'identificativo dell'app può cambiare leggermente. Se **Continua con l'app Spotify** non funziona, usa **Accedi dal browser** → **Continua con Google**: funziona sempre.
+
+## Cosa ti serve (installazione con Mac)
 1. **Un Mac** con **Xcode** (gratis dal Mac App Store, versione 16 o successiva). Senza Mac non si può installare un'app su iPhone. Alternative: farsi prestare un Mac, o noleggiarne uno nel cloud.
 2. Un **iPhone** con iOS 17 o successivo e un cavo USB.
 3. Un **Apple ID** (va bene quello gratuito).

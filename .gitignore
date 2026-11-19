@@ -5,3 +5,5 @@ DerivedData/
 build/
 xcuserdata/
 Config/Secrets.xcconfig
+*.ipa
+Installazione/
