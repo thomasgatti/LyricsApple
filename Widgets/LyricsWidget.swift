@@ -39,7 +39,9 @@ struct LyricsTimelineProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<LyricsEntry>) -> Void) {
         let entries = LyricsEntry.timeline(for: LyricsWidgetSnapshot.load(), now: .now, limit: maxEntries)
-        // Non serve richiedere aggiornamenti: è l'app a ricaricare il widget quando cambia qualcosa.
-        completion(Timeline(entries: entries, policy: .never))
+        // Di solito è l'app a ricaricarlo quando cambia qualcosa (salto, canzone saltata, coda modificata).
+        // Se iOS rimanda quella richiesta, il widget chiede comunque dati nuovi da solo dopo qualche minuto:
+        // li trova già aggiornati nell'App Group, perché Lyrics in sottofondo continua a scriverli.
+        completion(Timeline(entries: entries, policy: .after(Date.now.addingTimeInterval(5 * 60))))
     }
 }

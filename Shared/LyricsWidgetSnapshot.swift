@@ -95,7 +95,7 @@ struct LyricsWidgetSnapshot: Codable, Equatable {
     }
 
     /// Uguale a parte piccole differenze di orario: in quel caso non serve ricaricare il widget.
-    func isEquivalent(to other: LyricsWidgetSnapshot, tolerance: TimeInterval = 1) -> Bool {
+    func isEquivalent(to other: LyricsWidgetSnapshot, tolerance: TimeInterval = 2) -> Bool {
         guard trackID == other.trackID, title == other.title, artist == other.artist,
               isPlaying == other.isPlaying, statusLine == other.statusLine,
               lines.count == other.lines.count,

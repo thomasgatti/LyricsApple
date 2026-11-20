@@ -81,6 +81,8 @@ final class NowPlayingViewModel {
     /// Prossime canzoni della coda di Spotify con i testi già scaricati (per il widget).
     @ObservationIgnored private var upcoming: [UpcomingSong] = []
     @ObservationIgnored private var queueTask: Task<Void, Never>?
+    @ObservationIgnored private var lastQueueRefresh = Date.distantPast
+    static let queueRefreshInterval: TimeInterval = 30
     @ObservationIgnored private var consecutiveErrors = 0
 
     init(auth: SpotifyAuthService, lyricsProvider: any LyricsProvider = LRCLIBProvider()) {
@@ -276,6 +278,7 @@ final class NowPlayingViewModel {
     /// Legge la coda di Spotify e scarica in anticipo i testi delle prossime canzoni.
     private func refreshQueue() {
         queueTask?.cancel()
+        lastQueueRefresh = Date()
         let api = api
         let service = lyricsService
         let trackID = currentTrackID
@@ -499,6 +502,9 @@ final class NowPlayingViewModel {
             if track.id != currentTrackID {
                 currentTrackID = track.id
                 loadLyrics(for: track, bypassCache: false)
+                refreshQueue()
+            } else if Date().timeIntervalSince(lastQueueRefresh) > Self.queueRefreshInterval {
+                // Canzoni aggiunte o tolte dalla coda: la ricontrolliamo ogni 30 secondi.
                 refreshQueue()
             }
             return Self.nextPollDelay(for: snapshot, now: Date())
