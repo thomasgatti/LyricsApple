@@ -69,8 +69,8 @@ struct LyricsWidgetContent: View {
             AccessoryLyricsView(entry: entry)
         case .systemMedium:
             WidgetLyricsLayout(entry: entry, currentSize: 22, showsArtist: true, extraLines: true)
-        default:
-            WidgetLyricsLayout(entry: entry, currentSize: 18, showsArtist: false, extraLines: false)
+        default: // systemSmall: è il formato usato da CarPlay, testo il più grande possibile
+            WidgetLyricsLayout(entry: entry, currentSize: 28, showsArtist: false, extraLines: false)
         }
     }
 }
@@ -139,17 +139,18 @@ struct WidgetLyricsLayout: View {
                     .foregroundStyle(.white.opacity(0.6))
                     .lineLimit(1)
             }
-            Spacer(minLength: 0)
+            // La riga corrente occupa tutto lo spazio libero e si rimpicciolisce solo se non ci sta.
             Text(texts.current)
                 .font(.system(size: texts.isMessage ? currentSize * 0.8 : currentSize, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
-                .lineLimit(3)
-                .minimumScaleFactor(0.6)
+                .lineLimit(4)
+                .minimumScaleFactor(0.45)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 .contentTransition(.opacity)
             if !texts.next.isEmpty {
                 Text(texts.next)
-                    .font(.system(size: currentSize * 0.68, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .font(.system(size: extraLines ? currentSize * 0.68 : 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
                     .lineLimit(extraLines ? 1 : 2)
             }
             if extraLines, !texts.afterNext.isEmpty {
@@ -158,7 +159,6 @@ struct WidgetLyricsLayout: View {
                     .foregroundStyle(.white.opacity(0.28))
                     .lineLimit(1)
             }
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }

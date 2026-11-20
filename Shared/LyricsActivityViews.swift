@@ -36,13 +36,18 @@ struct SmallLyricsView: View {
                     .foregroundStyle(.white.opacity(0.6))
                     .lineLimit(1)
             }
-            VStack(alignment: .leading, spacing: 3) {
-                CurrentLineText(state: state, size: 18, lines: 2)
-                KaraokeBar(state: state, height: 2)
-                FadedLineText(text: state.nextLine, size: 13, opacity: 0.5)
+            VStack(alignment: .leading, spacing: 4) {
+                // Testo grande che occupa tutto lo spazio libero: si rimpicciolisce da solo solo se non ci sta.
+                Text(state.currentLine)
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(4)
+                    .minimumScaleFactor(0.45)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                KaraokeBar(state: state, height: 3)
+                FadedLineText(text: state.nextLine, size: 15, opacity: 0.55)
             }
             .scrollingLines(state)
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(8)
