@@ -16,6 +16,7 @@ final class LiveActivityController {
 
     static let heartbeat: TimeInterval = 30
     static let staleAfter: TimeInterval = 75
+    static let backgroundMinInterval: TimeInterval = 6
 
     private var activity: Activity<LyricsActivityAttributes>?
     private var lastState: State?
@@ -74,6 +75,13 @@ final class LiveActivityController {
 
         if let lastState, state.isEquivalent(to: lastState), activity != nil,
            let lastSent, now.timeIntervalSince(lastSent) < Self.heartbeat {
+            return
+        }
+        // Con l'iPhone bloccato iOS accetta solo pochi aggiornamenti: li diradiamo (al massimo uno ogni
+        // `backgroundMinInterval` secondi) tenendo subito quelli importanti (nuova canzone, pausa/ripresa).
+        if inBackground, activity != nil, let lastState, let lastSent,
+           lastState.title == state.title, lastState.isPlaying == state.isPlaying,
+           now.timeIntervalSince(lastSent) < Self.backgroundMinInterval {
             return
         }
         lastState = state

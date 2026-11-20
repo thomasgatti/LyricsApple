@@ -156,8 +156,6 @@ final class NowPlayingViewModel {
         // Le richieste di aggiornamento fatte in background iOS può rimandarle o ignorarle:
         // appena l'app è aperta ricarichiamo comunque il widget.
         widgetPublisher.invalidate()
-        // Live Activity ricreata da zero: se iOS aveva smesso di aggiornarla, ora riparte.
-        liveActivity.restart()
         start()
         if currentTrackID != nil { refreshQueue() } // la coda può essere cambiata mentre eravamo chiusi
         applyIdleTimer()
