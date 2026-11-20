@@ -84,8 +84,22 @@ struct WidgetTexts {
     var afterNext = ""
     var isPlaying = false
     var isMessage = false
-    /// Identità della riga: quando cambia, il blocco di testo scorre verso l'alto.
-    var lineID = -2
+    /// Identità delle righe (numero di riga nel testo): servono a iOS per capire che la riga "successiva"
+    /// di prima è la "corrente" di adesso, e farla salire di un posto invece di ridisegnare tutto.
+    var currentID = -100
+    var nextID = -101
+    var afterNextID = -102
+
+    struct Row: Identifiable {
+        let id: Int
+        let text: String
+    }
+
+    /// Righe in ordine (corrente, successiva, quella dopo), senza quelle vuote.
+    var rows: [Row] {
+        [Row(id: currentID, text: current), Row(id: nextID, text: next), Row(id: afterNextID, text: afterNext)]
+            .filter { !$0.text.isEmpty }
+    }
 
     init(_ entry: LyricsEntry) {
         switch entry.content {
@@ -113,7 +127,11 @@ struct WidgetTexts {
             self.next = snapshot.text(at: next)
             afterNext = next.map { snapshot.text(at: snapshot.nextNonEmptyIndex(after: $0)) } ?? ""
             isPlaying = true
-            lineID = index ?? -1
+            currentID = index ?? -1
+            if let next {
+                nextID = next
+                afterNextID = snapshot.nextNonEmptyIndex(after: next) ?? -102
+            }
         case let .ended(snapshot):
             title = snapshot.title
             artist = snapshot.artist
@@ -142,33 +160,36 @@ struct WidgetLyricsLayout: View {
                     .foregroundStyle(.white.opacity(0.6))
                     .lineLimit(1)
             }
-            // Blocco righe: grandezza fissa (niente "salti" tra una riga e l'altra);
-            // a ogni nuova riga entra dal basso e spinge su la precedente, come un rullo.
+            // Rullo: ogni riga ha la sua identità. Al cambio, la riga corrente esce in alto sfumando,
+            // la successiva SALE al suo posto e si ingrandisce, e in fondo ne entra una nuova.
+            // Si muove una riga alla volta, non tutto il blocco.
             VStack(alignment: .leading, spacing: 5) {
-                Text(texts.current)
-                    .font(.system(size: texts.isMessage ? currentSize * 0.85 : currentSize, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(extraLines ? 2 : 4)
-                    .minimumScaleFactor(0.7)
-                    .fixedSize(horizontal: false, vertical: true)
-                if !texts.next.isEmpty {
-                    Text(texts.next)
-                        .font(.system(size: currentSize * 0.62, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.5))
-                        .lineLimit(1)
-                }
-                if extraLines, !texts.afterNext.isEmpty {
-                    Text(texts.afterNext)
-                        .font(.system(size: currentSize * 0.55, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.28))
-                        .lineLimit(1)
+                ForEach(Array(texts.rows.prefix(extraLines ? 3 : 2).enumerated()), id: \.element.id) { position, row in
+                    Text(row.text)
+                        .font(.system(size: size(for: position, isMessage: texts.isMessage),
+                                      weight: position == 0 ? .heavy : .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(position == 0 ? 1 : (position == 1 ? 0.5 : 0.28)))
+                        .lineLimit(position == 0 ? (extraLines ? 2 : 4) : 1)
+                        .minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)
+                        ))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .id(texts.lineID)
-            .transition(.push(from: .bottom))
+            .clipped()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private func size(for position: Int, isMessage: Bool) -> CGFloat {
+        switch position {
+        case 0: return isMessage ? currentSize * 0.85 : currentSize
+        case 1: return currentSize * 0.62
+        default: return currentSize * 0.55
+        }
     }
 }
 

@@ -65,6 +65,8 @@ targets:
         UIUserInterfaceStyle: Dark
         # Live Activity: testo su schermata di blocco, Dynamic Island e CarPlay.
         NSSupportsLiveActivities: true
+        # Chiede a iOS di non rallentare gli aggiornamenti frequenti (una riga ogni pochi secondi).
+        NSSupportsLiveActivitiesFrequentUpdates: true
         # Audio silenzioso in background: tiene viva l'app (e la Live Activity) a schermo bloccato.
         UIBackgroundModes:
           - audio
