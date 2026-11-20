@@ -68,6 +68,13 @@ targets:
         # Audio silenzioso in background: tiene viva l'app (e la Live Activity) a schermo bloccato.
         UIBackgroundModes:
           - audio
+        # App Group per passare il testo al widget (nome di riserva: di solito lo legge dal profilo).
+        LyricsAppGroup: group.$(APP_BUNDLE_ID)
+    entitlements:
+      path: App/LyricsApple.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.$(APP_BUNDLE_ID)
 
   LyricsWidgets:
     type: app-extension
@@ -89,8 +96,14 @@ targets:
         CFBundleDisplayName: Lyrics
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LyricsAppGroup: group.$(APP_BUNDLE_ID)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widgets/LyricsWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.$(APP_BUNDLE_ID)
 
   LyricsAppleTests:
     type: bundle.unit-test

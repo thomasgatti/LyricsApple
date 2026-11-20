@@ -62,6 +62,7 @@ final class NowPlayingViewModel {
     }
 
     @ObservationIgnored private let liveActivity = LiveActivityController()
+    @ObservationIgnored private let widgetPublisher = WidgetPublisher()
     @ObservationIgnored private let keepAlive = BackgroundKeepAlive()
     @ObservationIgnored private var isInBackground = false
     @ObservationIgnored private var nothingPlayingSince: Date?
@@ -166,6 +167,7 @@ final class NowPlayingViewModel {
     func reset() {
         stop()
         liveActivity.end()
+        widgetPublisher.publish(nil)
         lyricsTask?.cancel()
         currentTrackID = nil
         playback = .loading
@@ -193,7 +195,9 @@ final class NowPlayingViewModel {
     /// Aggiorna la Live Activity esattamente quando inizia la riga successiva.
     private func lineLoop() async {
         while !Task.isCancelled {
-            let delay = refreshLiveActivity(now: Date())
+            let now = Date()
+            publishWidget(now: now)
+            let delay = refreshLiveActivity(now: now)
             try? await Task.sleep(nanoseconds: UInt64(max(delay, 0.1) * 1_000_000_000))
         }
     }
@@ -212,6 +216,58 @@ final class NowPlayingViewModel {
         )
         if let state = result.state { liveActivity.show(state) }
         return result.nextChange
+    }
+
+    private func publishWidget(now: Date) {
+        widgetPublisher.publish(Self.widgetSnapshot(
+            snapshot: snapshot,
+            lyricsState: lyricsState,
+            position: playbackPosition(at: now) + liveActivityLead,
+            now: now
+        ))
+    }
+
+    /// Dati per il widget: righe con l'orario (sull'orologio dell'iPhone) in cui iniziano.
+    nonisolated static func widgetSnapshot(
+        snapshot: PlaybackSnapshot?,
+        lyricsState: LyricsState,
+        position: TimeInterval,
+        now: Date
+    ) -> LyricsWidgetSnapshot? {
+        guard let snapshot, let track = snapshot.track else { return nil }
+        let playStart = now.addingTimeInterval(-position)
+        var widget = LyricsWidgetSnapshot(
+            trackID: track.id,
+            title: track.title,
+            artist: track.artistLine,
+            isPlaying: snapshot.isPlaying,
+            statusLine: nil,
+            lines: [],
+            songEnd: snapshot.isPlaying ? playStart.addingTimeInterval(max(track.duration, position + 1)) : nil
+        )
+        switch lyricsState {
+        case .loaded(let lyrics) where lyrics.isSynced:
+            if snapshot.isPlaying {
+                widget.lines = lyrics.lines.compactMap { line in
+                    line.time.map { .init(start: playStart.addingTimeInterval($0), text: line.text) }
+                }
+            } else {
+                let index = lyrics.lineIndex(at: position)
+                let text = index.map { lyrics.lines[$0].text } ?? ""
+                widget.statusLine = text.isEmpty ? "In pausa" : text
+            }
+        case .loaded(let lyrics):
+            widget.statusLine = lyrics.lines.first { !$0.text.isEmpty }?.text ?? "♪"
+        case .idle, .loading:
+            widget.statusLine = "Cerco il testo…"
+        case .instrumental:
+            widget.statusLine = "♪ Brano strumentale"
+        case .notFound:
+            widget.statusLine = "Testo non disponibile"
+        case .failed:
+            widget.statusLine = "Testo non caricato"
+        }
+        return widget
     }
 
     /// Calcola cosa mostrare e fra quanti secondi cambierà (funzione pura, testabile).
