@@ -33,7 +33,6 @@ final class LiveActivityController {
         case .stale: return "non aggiornata"
         case .ended: return "chiusa"
         case .dismissed: return "rimossa"
-        case .pending: return "in attesa"
         @unknown default: return "sconosciuto"
         }
     }
