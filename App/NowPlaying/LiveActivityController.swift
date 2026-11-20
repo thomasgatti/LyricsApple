@@ -50,7 +50,11 @@ final class LiveActivityController {
         needsRestart = true
     }
 
-    func show(_ state: State, now: Date = Date()) {
+    /// Diagnostica: aggiornamenti mandati con l'iPhone bloccato / app in background.
+    private(set) var backgroundUpdates = 0
+    private(set) var lastBackgroundUpdate: Date?
+
+    func show(_ state: State, now: Date = Date(), inBackground: Bool = false) {
         if needsRestart {
             needsRestart = false
             endAll(except: nil)
@@ -74,6 +78,10 @@ final class LiveActivityController {
         }
         lastState = state
         lastSent = now
+        if inBackground {
+            backgroundUpdates += 1
+            lastBackgroundUpdate = now
+        }
         let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(Self.staleAfter))
 
         if let activity {

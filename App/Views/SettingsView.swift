@@ -67,6 +67,8 @@ struct SettingsView: View {
                     LabeledContent("Riavvii audio in sottofondo", value: "\(model.keepAliveRestarts)")
                     LabeledContent("Live Activity", value: model.liveActivitySummary)
                     LabeledContent("Ultimo invio Live Activity", value: Self.time(model.liveActivityLastUpdate))
+                    LabeledContent("Invii Live Activity a iPhone bloccato", value: model.liveActivityBackground)
+                    LabeledContent("Ricariche widget a iPhone bloccato", value: model.widgetBackground)
                     if let error = model.liveActivityError {
                         Text("Errore Live Activity: \(error)")
                             .font(.caption)

@@ -16,7 +16,11 @@ final class WidgetPublisher {
         hasPublished = false
     }
 
-    func publish(_ snapshot: LyricsWidgetSnapshot?) {
+    /// Diagnostica: ricariche chieste con l'iPhone bloccato / app in background.
+    private(set) var backgroundReloads = 0
+    private(set) var lastBackgroundReload: Date?
+
+    func publish(inBackground: Bool = false, _ snapshot: LyricsWidgetSnapshot?) {
         guard isAvailable else { return }
         if hasPublished {
             switch (snapshot, last) {
@@ -28,6 +32,10 @@ final class WidgetPublisher {
         hasPublished = true
         last = snapshot
         lastReload = Date()
+        if inBackground {
+            backgroundReloads += 1
+            lastBackgroundReload = lastReload
+        }
         LyricsWidgetSnapshot.save(snapshot)
         WidgetCenter.shared.reloadTimelines(ofKind: LyricsWidgetSnapshot.kind)
     }

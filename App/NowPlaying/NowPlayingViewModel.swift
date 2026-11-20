@@ -157,6 +157,15 @@ final class NowPlayingViewModel {
     var appGroupName: String? { widgetPublisher.isAvailable ? AppGroup.identifier : nil }
     var lastWidgetReload: Date? { widgetPublisher.lastReload }
     var liveActivityLastUpdate: Date? { liveActivity.lastUpdate }
+    var liveActivityBackground: String {
+        "\(liveActivity.backgroundUpdates) · ultimo \(Self.clock(liveActivity.lastBackgroundUpdate))"
+    }
+    var widgetBackground: String {
+        "\(widgetPublisher.backgroundReloads) · ultima \(Self.clock(widgetPublisher.lastBackgroundReload))"
+    }
+    private static func clock(_ date: Date?) -> String {
+        date?.formatted(date: .omitted, time: .standard) ?? "—"
+    }
     var liveActivityError: String? { liveActivity.lastError }
     var liveActivitySummary: String {
         "\(liveActivity.stateDescription) · \(liveActivity.systemActivityCount) sul sistema"
@@ -244,12 +253,12 @@ final class NowPlayingViewModel {
             position: playbackPosition(at: now) + liveActivityLead,
             now: now
         )
-        if let state = result.state { liveActivity.show(state) }
+        if let state = result.state { liveActivity.show(state, inBackground: isInBackground) }
         return result.nextChange
     }
 
     private func publishWidget(now: Date) {
-        widgetPublisher.publish(Self.widgetSnapshot(
+        widgetPublisher.publish(inBackground: isInBackground, Self.widgetSnapshot(
             snapshot: snapshot,
             lyricsState: lyricsState,
             position: playbackPosition(at: now) + liveActivityLead,
