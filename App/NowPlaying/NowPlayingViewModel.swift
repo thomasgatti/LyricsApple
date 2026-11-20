@@ -574,9 +574,21 @@ final class NowPlayingViewModel {
         }
     }
 
+    // MARK: - Modalità auto
+
+    /// Modalità auto aperta: lo schermo resta sempre acceso e Lyrics resta in primo piano,
+    /// così iOS applica subito gli aggiornamenti di Live Activity (CarPlay) e widget.
+    private(set) var isCarModeActive = false
+
+    func setCarMode(_ active: Bool) {
+        isCarModeActive = active
+        widgetPublisher.invalidate()
+        applyIdleTimer()
+    }
+
     // MARK: - Schermo
 
     private func applyIdleTimer() {
-        UIApplication.shared.isIdleTimerDisabled = keepScreenOn && pollTask != nil
+        UIApplication.shared.isIdleTimerDisabled = (keepScreenOn || isCarModeActive) && pollTask != nil
     }
 }

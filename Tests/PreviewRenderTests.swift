@@ -110,6 +110,21 @@ final class PreviewRenderTests: XCTestCase {
         try save(sheet, named: "anteprime.png")
     }
 
+    func testRenderCarModePreview() throws {
+        let model = NowPlayingViewModel(auth: SpotifyAuthService())
+        let screen = CarModeContent(
+            texts: CarModeTexts(title: "Canzone di prova · Artista di prova",
+                                current: "Questa è la riga che stai ascoltando adesso",
+                                next: "e la riga che arriva subito dopo"),
+            dimScreen: .constant(true),
+            onClose: {}
+        )
+        .environment(model)
+        .frame(width: 390, height: 844)
+        .environment(\.colorScheme, .dark)
+        try save(screen, named: "modalita-auto.png")
+    }
+
     // MARK: Aiuti
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {

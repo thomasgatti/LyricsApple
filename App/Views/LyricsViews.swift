@@ -50,7 +50,7 @@ struct LyricsContainer: View {
 }
 
 /// Tasti rapidi per correggere al volo un testo in ritardo o in anticipo.
-private struct SyncNudgeBar: View {
+struct SyncNudgeBar: View {
     @Environment(NowPlayingViewModel.self) private var model
 
     var body: some View {

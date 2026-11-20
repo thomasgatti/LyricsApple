@@ -7,6 +7,7 @@ struct NowPlayingView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("safetyNoticeAccepted") private var safetyNoticeAccepted = false
     @State private var showSettings = false
+    @State private var showCarMode = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,6 +24,9 @@ struct NowPlayingView: View {
         // Lo sfondo è "dietro" il contenuto e non ne influenza più la larghezza.
         .background {
             ArtworkBackground(artworkURL: model.currentTrack?.artworkURL)
+        }
+        .fullScreenCover(isPresented: $showCarMode) {
+            CarModeView()
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -53,19 +57,19 @@ struct NowPlayingView: View {
         switch model.playback {
         case .loading:
             VStack(spacing: 0) {
-                TopBar(showSettings: $showSettings)
+                TopBar(showSettings: $showSettings, showCarMode: $showCarMode)
                 ProgressView("Collegamento a Spotify…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         case .nothingPlaying:
             VStack(spacing: 0) {
-                TopBar(showSettings: $showSettings)
+                TopBar(showSettings: $showSettings, showCarMode: $showCarMode)
                 NothingPlayingView(onRefresh: model.refreshNow)
             }
         case .playing(let snapshot):
             if let track = snapshot.track {
                 VStack(spacing: 0) {
-                    TrackHeader(track: track, showSettings: $showSettings)
+                    TrackHeader(track: track, showSettings: $showSettings, showCarMode: $showCarMode)
                     LyricsContainer()
                         .id(track.id)
                 }
@@ -76,14 +80,32 @@ struct NowPlayingView: View {
 
 private struct TopBar: View {
     @Binding var showSettings: Bool
+    @Binding var showCarMode: Bool
 
     var body: some View {
         HStack {
             Spacer()
+            CarModeButton(showCarMode: $showCarMode)
             SettingsButton(showSettings: $showSettings)
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
+    }
+}
+
+/// Apre la Modalità auto: Lyrics resta aperta in primo piano e CarPlay segue in tempo reale.
+private struct CarModeButton: View {
+    @Binding var showCarMode: Bool
+
+    var body: some View {
+        Button {
+            showCarMode = true
+        } label: {
+            Image(systemName: "car.fill")
+                .font(.title3)
+                .frame(width: 44, height: 44)
+        }
+        .accessibilityLabel("Modalità auto")
     }
 }
 
@@ -107,6 +129,7 @@ private struct TrackHeader: View {
     @Environment(NowPlayingViewModel.self) private var model
     let track: Track
     @Binding var showSettings: Bool
+    @Binding var showCarMode: Bool
 
     var body: some View {
         VStack(spacing: 12) {
@@ -140,6 +163,7 @@ private struct TrackHeader: View {
                     }
                     .accessibilityLabel("Apri in Spotify")
                 }
+                CarModeButton(showCarMode: $showCarMode)
                 SettingsButton(showSettings: $showSettings)
             }
 
