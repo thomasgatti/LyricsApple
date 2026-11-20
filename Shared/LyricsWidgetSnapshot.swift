@@ -84,6 +84,13 @@ struct LyricsWidgetSnapshot: Codable, Equatable {
         return lines[index].text.isEmpty ? "♪" : lines[index].text
     }
 
+    /// Prima riga con del testo dopo `index` (le righe vuote, pause strumentali, vengono saltate).
+    func nextNonEmptyIndex(after index: Int?) -> Int? {
+        let from = (index ?? -1) + 1
+        guard from < lines.count else { return nil }
+        return lines[from...].firstIndex { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
     /// Uguale a parte piccole differenze di orario: in quel caso non serve ricaricare il widget.
     func isEquivalent(to other: LyricsWidgetSnapshot, tolerance: TimeInterval = 1) -> Bool {
         guard trackID == other.trackID, title == other.title, artist == other.artist,

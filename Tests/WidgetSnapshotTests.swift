@@ -57,6 +57,29 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertFalse(a.isEquivalent(to: jumped))
     }
 
+    func testNextLineSkipsEmptyLines() throws {
+        let widget = try XCTUnwrap(NowPlayingViewModel.widgetSnapshot(
+            snapshot: playback(true), lyricsState: .loaded(lyrics), position: 12, now: Date()))
+        XCTAssertEqual(widget.nextNonEmptyIndex(after: 0), 2) // la riga 1 è vuota
+        XCTAssertEqual(widget.nextNonEmptyIndex(after: nil), 0)
+        XCTAssertNil(widget.nextNonEmptyIndex(after: 2))
+    }
+
+    func testSilentAudioIsValidWAV() {
+        let wav = BackgroundKeepAlive.silentWAV
+        XCTAssertEqual(String(decoding: wav.prefix(4), as: UTF8.self), "RIFF")
+        XCTAssertEqual(wav.count, 44 + 16_000)
+    }
+
+    func testStaleLiveActivityStopsBarsAndAsksToOpenApp() {
+        let state = LyricsActivityAttributes.ContentState(
+            title: "T", artist: "A", currentLine: "Riga", nextLine: "Dopo", isPlaying: true, hasLyrics: true)
+        let stale = state.staleVersion()
+        XCTAssertFalse(stale.isPlaying)
+        XCTAssertEqual(stale.currentLine, "Riga")
+        XCTAssertTrue(stale.nextLine.contains("apri Lyrics"))
+    }
+
     func testSaveAndLoadRoundTrip() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "WidgetSnapshotTests"))
         defer { defaults.removePersistentDomain(forName: "WidgetSnapshotTests") }

@@ -10,7 +10,7 @@ import WidgetKit
 struct LyricsLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: LyricsActivityAttributes.self) { context in
-            LyricsActivityContentView(state: context.state)
+            LyricsActivityContentView(state: context.isStale ? context.state.staleVersion() : context.state)
                 .activityBackgroundTint(LyricsPalette.background.opacity(0.92))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
@@ -28,7 +28,7 @@ struct LyricsLiveActivity: Widget {
                         .frame(maxWidth: 140, alignment: .trailing)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    DynamicIslandLyricsView(state: context.state)
+                    DynamicIslandLyricsView(state: context.isStale ? context.state.staleVersion() : context.state)
                         .padding(.horizontal, 6)
                 }
             } compactLeading: {

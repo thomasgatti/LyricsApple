@@ -84,8 +84,11 @@ final class PreviewRenderTests: XCTestCase {
                 }
             }
 
-            section("Schermata di blocco · Live Activity") {
-                activityTile(LockScreenLyricsView(state: activityState(current: long)), size: CGSize(width: 370, height: 160))
+            section("Schermata di blocco · Live Activity  (sotto: quando Lyrics è stata sospesa)") {
+                VStack(spacing: 10) {
+                    activityTile(LockScreenLyricsView(state: activityState(current: long)), size: CGSize(width: 370, height: 160))
+                    activityTile(LockScreenLyricsView(state: activityState(current: long).staleVersion()), size: CGSize(width: 370, height: 160))
+                }
             }
 
             section("Home · widget medio  ·  Schermata di blocco · widget sotto l'orologio") {

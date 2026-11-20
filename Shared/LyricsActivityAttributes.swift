@@ -29,6 +29,16 @@ struct LyricsActivityAttributes: ActivityAttributes {
 }
 
 extension LyricsActivityAttributes.ContentState {
+    /// Versione da mostrare quando Lyrics non manda aggiornamenti da troppo (iOS l'ha sospesa):
+    /// niente barre che avanzano e un invito ad aprire l'app, invece di righe che non corrispondono.
+    func staleVersion() -> Self {
+        var copy = self
+        copy.isPlaying = false
+        copy.nextLine = "Testo fermo: apri Lyrics per riprendere"
+        copy.afterNextLine = ""
+        return copy
+    }
+
     /// Uguale a parte piccole differenze negli orari (dovute ai controlli periodici su Spotify):
     /// in quel caso non serve aggiornare la Live Activity.
     func isEquivalent(to other: Self, tolerance: TimeInterval = 0.75) -> Bool {

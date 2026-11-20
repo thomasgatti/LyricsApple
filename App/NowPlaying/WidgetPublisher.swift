@@ -7,8 +7,14 @@ import WidgetKit
 final class WidgetPublisher {
     private var last: LyricsWidgetSnapshot?
     private var hasPublished = false
+    private(set) var lastReload: Date?
 
     var isAvailable: Bool { AppGroup.defaults != nil }
+
+    /// La prossima `publish` ricarica il widget anche se i dati non sono cambiati.
+    func invalidate() {
+        hasPublished = false
+    }
 
     func publish(_ snapshot: LyricsWidgetSnapshot?) {
         guard isAvailable else { return }
@@ -21,6 +27,7 @@ final class WidgetPublisher {
         }
         hasPublished = true
         last = snapshot
+        lastReload = Date()
         LyricsWidgetSnapshot.save(snapshot)
         WidgetCenter.shared.reloadTimelines(ofKind: LyricsWidgetSnapshot.kind)
     }

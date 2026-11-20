@@ -60,6 +60,17 @@ struct SettingsView: View {
                         .font(.footnote)
                 }
 
+                Section {
+                    LabeledContent("Widget (App Group)", value: model.appGroupName == nil ? "Non disponibile" : "Attivo")
+                    LabeledContent("Ultimo aggiornamento widget", value: Self.time(model.lastWidgetReload))
+                    LabeledContent("Ultimo controllo a iPhone bloccato", value: Self.time(model.lastBackgroundPoll))
+                    LabeledContent("Riavvii audio in sottofondo", value: "\(model.keepAliveRestarts)")
+                } header: {
+                    Text("Diagnostica")
+                } footer: {
+                    Text("Se il testo sulla schermata di blocco si ferma, guarda qui l'orario dell'ultimo controllo a iPhone bloccato e mandalo a chi ti aiuta con l'app.")
+                }
+
                 Section("Fonti") {
                     LabeledContent("Brano in riproduzione", value: "Spotify")
                     LabeledContent("Testi", value: model.lyricsSourceName)
@@ -82,6 +93,13 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+extension SettingsView {
+    static func time(_ date: Date?) -> String {
+        guard let date else { return "—" }
+        return date.formatted(date: .omitted, time: .standard)
     }
 }
 

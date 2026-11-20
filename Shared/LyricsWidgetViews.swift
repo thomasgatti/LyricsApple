@@ -68,9 +68,9 @@ struct LyricsWidgetContent: View {
         case .accessoryRectangular:
             AccessoryLyricsView(entry: entry)
         case .systemMedium:
-            WidgetLyricsLayout(entry: entry, currentSize: 22, showsArtist: true, extraLines: true)
-        default: // systemSmall: è il formato usato da CarPlay, testo il più grande possibile
-            WidgetLyricsLayout(entry: entry, currentSize: 28, showsArtist: false, extraLines: false)
+            WidgetLyricsLayout(entry: entry, currentSize: 24, showsArtist: true, extraLines: true)
+        default: // systemSmall: è il formato usato da CarPlay, testo grande
+            WidgetLyricsLayout(entry: entry, currentSize: 23, showsArtist: false, extraLines: false)
         }
     }
 }
@@ -84,6 +84,8 @@ struct WidgetTexts {
     var afterNext = ""
     var isPlaying = false
     var isMessage = false
+    /// Identità della riga: quando cambia, il blocco di testo scorre verso l'alto.
+    var lineID = -2
 
     init(_ entry: LyricsEntry) {
         switch entry.content {
@@ -107,10 +109,11 @@ struct WidgetTexts {
             title = snapshot.title
             artist = snapshot.artist
             current = index == nil ? "♪" : snapshot.text(at: index)
-            let next = (index ?? -1) + 1
+            let next = snapshot.nextNonEmptyIndex(after: index)
             self.next = snapshot.text(at: next)
-            afterNext = snapshot.text(at: next + 1)
+            afterNext = next.map { snapshot.text(at: snapshot.nextNonEmptyIndex(after: $0)) } ?? ""
             isPlaying = true
+            lineID = index ?? -1
         case let .ended(snapshot):
             title = snapshot.title
             artist = snapshot.artist
@@ -139,26 +142,31 @@ struct WidgetLyricsLayout: View {
                     .foregroundStyle(.white.opacity(0.6))
                     .lineLimit(1)
             }
-            // La riga corrente occupa tutto lo spazio libero e si rimpicciolisce solo se non ci sta.
-            Text(texts.current)
-                .font(.system(size: texts.isMessage ? currentSize * 0.8 : currentSize, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(4)
-                .minimumScaleFactor(0.45)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .contentTransition(.opacity)
-            if !texts.next.isEmpty {
-                Text(texts.next)
-                    .font(.system(size: extraLines ? currentSize * 0.68 : 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
-                    .lineLimit(extraLines ? 1 : 2)
+            // Blocco righe: grandezza fissa (niente "salti" tra una riga e l'altra);
+            // a ogni nuova riga entra dal basso e spinge su la precedente, come un rullo.
+            VStack(alignment: .leading, spacing: 5) {
+                Text(texts.current)
+                    .font(.system(size: texts.isMessage ? currentSize * 0.85 : currentSize, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(extraLines ? 2 : 3)
+                    .minimumScaleFactor(0.75)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !texts.next.isEmpty {
+                    Text(texts.next)
+                        .font(.system(size: currentSize * 0.62, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .lineLimit(extraLines ? 1 : 2)
+                }
+                if extraLines, !texts.afterNext.isEmpty {
+                    Text(texts.afterNext)
+                        .font(.system(size: currentSize * 0.55, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.28))
+                        .lineLimit(1)
+                }
             }
-            if extraLines, !texts.afterNext.isEmpty {
-                Text(texts.afterNext)
-                    .font(.system(size: currentSize * 0.6, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.28))
-                    .lineLimit(1)
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .id(texts.lineID)
+            .transition(.push(from: .bottom))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }

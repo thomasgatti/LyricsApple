@@ -2,13 +2,20 @@ import ActivityKit
 import Foundation
 
 /// Avvia, aggiorna e chiude la Live Activity "Lyrics".
-/// Gli aggiornamenti partono dall'app mentre è aperta: invia solo i cambiamenti (nuova riga, nuovo brano, pausa).
+/// Gli aggiornamenti partono dall'app: invia i cambiamenti (nuova riga, nuovo brano, pausa) e,
+/// anche senza cambiamenti, un "segnale di vita" ogni 30 secondi. Se i segnali smettono di arrivare
+/// (iOS ha sospeso Lyrics) dopo 75 secondi la Live Activity risulta "non aggiornata" e invita ad aprire l'app,
+/// invece di mostrare righe sbagliate.
 @MainActor
 final class LiveActivityController {
     typealias State = LyricsActivityAttributes.ContentState
 
+    static let heartbeat: TimeInterval = 30
+    static let staleAfter: TimeInterval = 75
+
     private var activity: Activity<LyricsActivityAttributes>?
     private var lastState: State?
+    private var lastSent: Date?
 
     /// `false` se l'utente ha disattivato le Live Activity per Lyrics in Impostazioni iOS.
     var isAllowedBySystem: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
@@ -20,11 +27,14 @@ final class LiveActivityController {
         }
     }
 
-    func show(_ state: State) {
-        if let lastState, state.isEquivalent(to: lastState), activity?.activityState == .active { return }
+    func show(_ state: State, now: Date = Date()) {
+        if let lastState, state.isEquivalent(to: lastState), activity?.activityState == .active,
+           let lastSent, now.timeIntervalSince(lastSent) < Self.heartbeat {
+            return
+        }
         lastState = state
-        // Se non riceve aggiornamenti per 10 minuti, iOS la mostra come "non aggiornata".
-        let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(10 * 60))
+        lastSent = now
+        let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(Self.staleAfter))
 
         if let activity, activity.activityState == .active {
             Task { await activity.update(content) }
@@ -40,11 +50,13 @@ final class LiveActivityController {
         } catch {
             activity = nil
             lastState = nil
+            lastSent = nil
         }
     }
 
     func end() {
         lastState = nil
+        lastSent = nil
         guard let activity else { return }
         self.activity = nil
         Task { await activity.end(nil, dismissalPolicy: .immediate) }

@@ -128,9 +128,20 @@ final class NowPlayingViewModel {
     func enterForeground() {
         isInBackground = false
         keepAlive.stop()
+        // Le richieste di aggiornamento fatte in background iOS può rimandarle o ignorarle:
+        // appena l'app è aperta ricarichiamo comunque il widget.
+        widgetPublisher.invalidate()
         start()
         applyIdleTimer()
     }
+
+    // MARK: - Diagnostica (Impostazioni)
+
+    /// Ultima volta che, con l'app in background, abbiamo chiesto a Spotify cosa suona.
+    private(set) var lastBackgroundPoll: Date?
+    var keepAliveRestarts: Int { keepAlive.restartCount }
+    var appGroupName: String? { widgetPublisher.isAvailable ? AppGroup.identifier : nil }
+    var lastWidgetReload: Date? { widgetPublisher.lastReload }
 
     /// iPhone bloccato o app in background: con la Live Activity attiva continuiamo a seguire il testo.
     func enterBackground() {
@@ -359,9 +370,11 @@ final class NowPlayingViewModel {
     /// Esegue una lettura e restituisce dopo quanti secondi ripetere.
     private func pollOnce() async -> TimeInterval {
         do {
+            if isInBackground { keepAlive.ensureRunning() }
             let snapshot = try await api.currentlyPlaying()
             consecutiveErrors = 0
             bannerMessage = nil
+            if isInBackground { lastBackgroundPoll = Date() }
 
             guard let snapshot, let track = snapshot.track else {
                 playback = .nothingPlaying
