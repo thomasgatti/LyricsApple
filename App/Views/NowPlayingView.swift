@@ -23,8 +23,16 @@ struct NowPlayingView: View {
         .animation(.easeInOut, value: model.bannerMessage)
         // Lo sfondo è "dietro" il contenuto e non ne influenza più la larghezza.
         .background {
-            ArtworkBackground(artworkURL: model.currentTrack?.artworkURL)
+            ZStack(alignment: .bottomLeading) {
+                ArtworkBackground(artworkURL: model.currentTrack?.artworkURL)
+                // Il "video" della finestra flottante deve stare nella finestra dell'app: lo teniamo minuscolo.
+                FloatingLyricsHost(view: model.floating.hostView)
+                    .frame(width: 32, height: 18)
+                    .opacity(0.05)
+                    .allowsHitTesting(false)
+            }
         }
+        .onAppear { model.floating.prepare() }
         .fullScreenCover(isPresented: $showCarMode) {
             CarModeView()
         }
@@ -85,12 +93,36 @@ private struct TopBar: View {
     var body: some View {
         HStack {
             Spacer()
+            FloatingLyricsButton()
             CarModeButton(showCarMode: $showCarMode)
             SettingsButton(showSettings: $showSettings)
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
     }
+}
+
+/// Apre o chiude la finestra flottante con il testo, che resta sopra le altre app.
+private struct FloatingLyricsButton: View {
+    @Environment(NowPlayingViewModel.self) private var model
+
+    var body: some View {
+        Button {
+            model.toggleFloatingLyrics()
+        } label: {
+            Image(systemName: model.floating.isActive ? "pip.exit" : "pip.enter")
+                .font(.title3)
+                .frame(width: 44, height: 44)
+        }
+        .accessibilityLabel(model.floating.isActive ? "Chiudi la finestra flottante" : "Apri la finestra flottante")
+    }
+}
+
+/// Vista UIKit con il "video" del testo per la finestra flottante.
+private struct FloatingLyricsHost: UIViewRepresentable {
+    let view: FloatingLyricsHostView
+    func makeUIView(context: Context) -> FloatingLyricsHostView { view }
+    func updateUIView(_ uiView: FloatingLyricsHostView, context: Context) {}
 }
 
 /// Apre la Modalità auto: Lyrics resta aperta in primo piano e CarPlay segue in tempo reale.
@@ -163,6 +195,7 @@ private struct TrackHeader: View {
                     }
                     .accessibilityLabel("Apri in Spotify")
                 }
+                FloatingLyricsButton()
                 CarModeButton(showCarMode: $showCarMode)
                 SettingsButton(showSettings: $showSettings)
             }

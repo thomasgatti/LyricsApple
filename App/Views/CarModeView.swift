@@ -13,7 +13,7 @@ struct CarModeView: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.25)) { context in
-            CarModeContent(texts: texts(at: context.date), dimScreen: $dimScreen) {
+            CarModeContent(texts: model.overlayTexts(at: context.date), dimScreen: $dimScreen) {
                 dismiss()
             }
         }
@@ -28,31 +28,6 @@ struct CarModeView: View {
             restoreBrightness()
         }
         .onChange(of: dimScreen) { _, _ in applyBrightness() }
-    }
-
-    private func texts(at date: Date) -> CarModeTexts {
-        guard let track = model.currentTrack else {
-            return CarModeTexts(title: "Lyrics", current: "Niente in riproduzione", next: "Avvia una canzone su Spotify")
-        }
-        let title = "\(track.title) · \(track.artistLine)"
-        switch model.lyricsState {
-        case .loaded(let lyrics) where lyrics.isSynced:
-            let index = model.currentLineIndex(at: date)
-            let current = index.map { lyrics.lines[$0].text } ?? ""
-            let nextText = lyrics.lines[((index ?? -1) + 1)...].first { !$0.text.isEmpty }?.text ?? ""
-            return CarModeTexts(title: title, current: current.isEmpty ? "♪" : current, next: nextText,
-                                isPaused: !(model.snapshot?.isPlaying ?? false))
-        case .loaded:
-            return CarModeTexts(title: title, current: "Testo non sincronizzato", next: "")
-        case .idle, .loading:
-            return CarModeTexts(title: title, current: "Cerco il testo…", next: "")
-        case .instrumental:
-            return CarModeTexts(title: title, current: "♪ Brano strumentale", next: "")
-        case .notFound:
-            return CarModeTexts(title: title, current: "Testo non disponibile", next: "")
-        case .failed:
-            return CarModeTexts(title: title, current: "Testo non caricato", next: "")
-        }
     }
 
     private var screen: UIScreen? {
@@ -73,6 +48,41 @@ struct CarModeView: View {
         guard let saved = savedBrightness else { return }
         screen?.brightness = saved
         savedBrightness = nil
+    }
+}
+
+extension NowPlayingViewModel {
+    /// Testi per Modalità auto e finestra flottante: titolo, riga in corso, riga successiva.
+    func overlayTexts(at date: Date) -> CarModeTexts {
+        guard let track = currentTrack else {
+            return CarModeTexts(title: "Lyrics", current: "Niente in riproduzione", next: "Avvia una canzone su Spotify")
+        }
+        let title = "\(track.title) · \(track.artistLine)"
+        switch lyricsState {
+        case .loaded(let lyrics) where lyrics.isSynced:
+            let index = currentLineIndex(at: date)
+            let current = index.map { lyrics.lines[$0].text } ?? ""
+            let nextText = lyrics.lines[((index ?? -1) + 1)...].first { !$0.text.isEmpty }?.text ?? ""
+            return CarModeTexts(title: title, current: current.isEmpty ? "♪" : current, next: nextText,
+                                isPaused: !(snapshot?.isPlaying ?? false))
+        case .loaded:
+            return CarModeTexts(title: title, current: "Testo non sincronizzato", next: "")
+        case .idle, .loading:
+            return CarModeTexts(title: title, current: "Cerco il testo…", next: "")
+        case .instrumental:
+            return CarModeTexts(title: title, current: "♪ Brano strumentale", next: "")
+        case .notFound:
+            return CarModeTexts(title: title, current: "Testo non disponibile", next: "")
+        case .failed:
+            return CarModeTexts(title: title, current: "Testo non caricato", next: "")
+        }
+    }
+
+    /// Apre o chiude la finestra flottante (serve la sessione audio attiva).
+    func toggleFloatingLyrics() {
+        startBackgroundAudio()
+        floating.prepare()
+        floating.toggle()
     }
 }
 

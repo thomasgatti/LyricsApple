@@ -61,6 +61,14 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Apri da sola quando esci da Lyrics", isOn: Bindable(model.floating).opensAutomatically)
+                } header: {
+                    Text("Finestra flottante")
+                } footer: {
+                    Text("Una piccola finestra con il testo che resta sopra le altre app (come i video in Picture in Picture). Si apre anche col pulsante in alto. Puoi spostarla, ingrandirla con due dita o nasconderla di lato. Non compare sullo schermo dell'auto.")
+                }
+
+                Section {
                     Toggle("Aggiorna il widget anche in sottofondo", isOn: $bindableModel.widgetUpdatesInBackground)
                 } header: {
                     Text("Widget")
