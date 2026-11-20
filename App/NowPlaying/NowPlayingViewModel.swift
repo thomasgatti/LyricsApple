@@ -143,6 +143,8 @@ final class NowPlayingViewModel {
         // Le richieste di aggiornamento fatte in background iOS può rimandarle o ignorarle:
         // appena l'app è aperta ricarichiamo comunque il widget.
         widgetPublisher.invalidate()
+        // Live Activity ricreata da zero: se iOS aveva smesso di aggiornarla, ora riparte.
+        liveActivity.restart()
         start()
         applyIdleTimer()
     }
@@ -154,6 +156,11 @@ final class NowPlayingViewModel {
     var keepAliveRestarts: Int { keepAlive.restartCount }
     var appGroupName: String? { widgetPublisher.isAvailable ? AppGroup.identifier : nil }
     var lastWidgetReload: Date? { widgetPublisher.lastReload }
+    var liveActivityLastUpdate: Date? { liveActivity.lastUpdate }
+    var liveActivityError: String? { liveActivity.lastError }
+    var liveActivitySummary: String {
+        "\(liveActivity.stateDescription) · \(liveActivity.systemActivityCount) sul sistema"
+    }
 
     /// iPhone bloccato o app in background: con la Live Activity attiva continuiamo a seguire il testo.
     func enterBackground() {

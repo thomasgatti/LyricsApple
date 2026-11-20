@@ -65,6 +65,13 @@ struct SettingsView: View {
                     LabeledContent("Ultimo aggiornamento widget", value: Self.time(model.lastWidgetReload))
                     LabeledContent("Ultimo controllo a iPhone bloccato", value: Self.time(model.lastBackgroundPoll))
                     LabeledContent("Riavvii audio in sottofondo", value: "\(model.keepAliveRestarts)")
+                    LabeledContent("Live Activity", value: model.liveActivitySummary)
+                    LabeledContent("Ultimo invio Live Activity", value: Self.time(model.liveActivityLastUpdate))
+                    if let error = model.liveActivityError {
+                        Text("Errore Live Activity: \(error)")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                 } header: {
                     Text("Diagnostica")
                 } footer: {

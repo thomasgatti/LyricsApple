@@ -2,10 +2,14 @@ import ActivityKit
 import Foundation
 
 /// Avvia, aggiorna e chiude la Live Activity "Lyrics".
-/// Gli aggiornamenti partono dall'app: invia i cambiamenti (nuova riga, nuovo brano, pausa) e,
-/// anche senza cambiamenti, un "segnale di vita" ogni 30 secondi. Se i segnali smettono di arrivare
-/// (iOS ha sospeso Lyrics) dopo 75 secondi la Live Activity risulta "non aggiornata" e invita ad aprire l'app,
-/// invece di mostrare righe sbagliate.
+///
+/// - Invia i cambiamenti (nuova riga, nuovo brano, pausa) e, anche senza cambiamenti, un "segnale di vita"
+///   ogni 30 secondi. Se i segnali smettono di arrivare (iOS ha sospeso Lyrics) dopo 75 secondi la
+///   Live Activity risulta "non aggiornata" e invita ad aprire l'app.
+/// - Ne tiene viva UNA sola: adotta quella già esistente invece di crearne un'altra, e chiude le copie.
+///   (Una copia "orfana" resterebbe sulla schermata di blocco ferma sul vecchio brano.)
+/// - Quando l'app torna in primo piano la ricrea da zero (`restart`), così una Live Activity che iOS
+///   non aggiorna più viene sostituita.
 @MainActor
 final class LiveActivityController {
     typealias State = LyricsActivityAttributes.ContentState
@@ -16,19 +20,56 @@ final class LiveActivityController {
     private var activity: Activity<LyricsActivityAttributes>?
     private var lastState: State?
     private var lastSent: Date?
+    private var needsRestart = false
+
+    /// Diagnostica (Impostazioni).
+    private(set) var lastUpdate: Date?
+    private(set) var lastError: String?
+    var systemActivityCount: Int { Activity<LyricsActivityAttributes>.activities.count }
+    var stateDescription: String {
+        guard let activity else { return "nessuna" }
+        switch activity.activityState {
+        case .active: return "attiva"
+        case .stale: return "non aggiornata"
+        case .ended: return "chiusa"
+        case .dismissed: return "rimossa"
+        case .pending: return "in attesa"
+        @unknown default: return "sconosciuto"
+        }
+    }
 
     /// `false` se l'utente ha disattivato le Live Activity per Lyrics in Impostazioni iOS.
     var isAllowedBySystem: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
 
     init() {
         // Chiude eventuali Live Activity rimaste da un avvio precedente.
-        for leftover in Activity<LyricsActivityAttributes>.activities {
-            Task { await leftover.end(nil, dismissalPolicy: .immediate) }
-        }
+        endAll(except: nil)
+    }
+
+    /// Da chiamare quando l'app torna in primo piano: al prossimo `show` la Live Activity viene ricreata.
+    func restart() {
+        needsRestart = true
     }
 
     func show(_ state: State, now: Date = Date()) {
-        if let lastState, state.isEquivalent(to: lastState), activity?.activityState == .active,
+        if needsRestart {
+            needsRestart = false
+            endAll(except: nil)
+            activity = nil
+            lastState = nil
+        }
+
+        if let activity, !Self.isUpdatable(activity) {
+            self.activity = nil
+            lastState = nil
+        }
+        if activity == nil {
+            // Adotta una Live Activity già presente (per esempio creata prima di una sospensione).
+            activity = Activity<LyricsActivityAttributes>.activities.first(where: Self.isUpdatable)
+        }
+        endAll(except: activity?.id)
+
+        if let lastState, state.isEquivalent(to: lastState), activity != nil,
            let lastSent, now.timeIntervalSince(lastSent) < Self.heartbeat {
             return
         }
@@ -36,29 +77,47 @@ final class LiveActivityController {
         lastSent = now
         let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(Self.staleAfter))
 
-        if let activity, activity.activityState == .active {
-            Task { await activity.update(content) }
+        if let activity {
+            Task {
+                await activity.update(content)
+                self.lastUpdate = Date()
+            }
             return
         }
-        guard isAllowedBySystem else { return }
+        guard isAllowedBySystem else {
+            lastError = "Live Activity disattivate nelle Impostazioni di iOS"
+            return
+        }
         do {
             activity = try Activity.request(
                 attributes: LyricsActivityAttributes(),
                 content: content,
                 pushType: nil
             )
+            lastUpdate = Date()
+            lastError = nil
         } catch {
             activity = nil
             lastState = nil
             lastSent = nil
+            lastError = error.localizedDescription
         }
     }
 
     func end() {
         lastState = nil
         lastSent = nil
-        guard let activity else { return }
-        self.activity = nil
-        Task { await activity.end(nil, dismissalPolicy: .immediate) }
+        activity = nil
+        endAll(except: nil)
+    }
+
+    private static func isUpdatable(_ activity: Activity<LyricsActivityAttributes>) -> Bool {
+        activity.activityState == .active || activity.activityState == .stale
+    }
+
+    private func endAll(except keepID: String?) {
+        for other in Activity<LyricsActivityAttributes>.activities where other.id != keepID {
+            Task { await other.end(nil, dismissalPolicy: .immediate) }
+        }
     }
 }
