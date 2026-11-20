@@ -30,11 +30,23 @@ jobs:
           print(next(d['udid'] for runtime, ds in devices.items() if 'iOS' in runtime for d in ds if 'iPhone' in d['name']))
           ")
           echo "Simulatore: $UDID"
-          xcodebuild test \
+          mkdir -p previews
+          # TEST_RUNNER_PREVIEW_DIR arriva ai test come PREVIEW_DIR: lì vengono salvate le anteprime PNG.
+          TEST_RUNNER_PREVIEW_DIR="$PWD/previews" xcodebuild test \
             -project LyricsApple.xcodeproj \
             -scheme LyricsApple \
             -destination "id=$UDID" \
             CODE_SIGNING_ALLOWED=NO
+
+      # Immagini di widget e Live Activity (CarPlay, schermata di blocco, Home) da guardare senza iPhone.
+      - name: Carica le anteprime
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anteprime
+          path: previews
+          if-no-files-found: warn
+          retention-days: 30
 
   # Crea il file LyricsApple.ipa NON firmato, da installare gratis con AltStore (o Sideloadly)
   # usando un Apple ID gratuito. Il file si scarica dalla pagina della build, sezione "Artifacts".
