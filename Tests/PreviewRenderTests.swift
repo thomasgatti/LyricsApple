@@ -117,19 +117,6 @@ final class PreviewRenderTests: XCTestCase {
         try save(sheet, named: "anteprime.png")
     }
 
-    func testRenderFloatingWindowFrame() throws {
-        let texts = CarModeTexts(title: "Canzone di prova · Artista di prova",
-                                 current: "Questa è la riga che stai ascoltando adesso",
-                                 next: "e la riga che arriva subito dopo")
-        XCTAssertNotNil(FloatingLyricsController.makeSampleBuffer(texts: texts), "Il fotogramma video deve crearsi")
-        let image = UIGraphicsImageRenderer(size: FloatingLyricsController.frameSize).image { _ in
-            FloatingLyricsController.drawFrame(texts: texts, size: FloatingLyricsController.frameSize)
-        }
-        let data = try XCTUnwrap(image.pngData())
-        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-        try data.write(to: outputDirectory.appendingPathComponent("finestra-flottante.png"))
-    }
-
     func testRenderCarModePreview() throws {
         let model = NowPlayingViewModel(auth: SpotifyAuthService())
         let screen = CarModeContent(

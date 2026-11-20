@@ -75,8 +75,6 @@ final class NowPlayingViewModel {
 
     @ObservationIgnored private let liveActivity = LiveActivityController()
     @ObservationIgnored private let widgetPublisher = WidgetPublisher()
-    /// Finestra flottante (Picture in Picture) con il testo, sopra le altre app.
-    @ObservationIgnored let floating = FloatingLyricsController()
     @ObservationIgnored private let keepAlive = BackgroundKeepAlive()
     @ObservationIgnored private var isInBackground = false
     @ObservationIgnored private var nothingPlayingSince: Date?
@@ -104,9 +102,6 @@ final class NowPlayingViewModel {
         self.showLiveActivity = defaults.object(forKey: Keys.showLiveActivity) as? Bool ?? true
         self.liveActivityLead = defaults.object(forKey: Keys.liveActivityLead) as? Double ?? Self.defaultLiveActivityLead
         self.widgetUpdatesInBackground = defaults.object(forKey: Keys.widgetUpdatesInBackground) as? Bool ?? false
-        floating.textsProvider = { [weak self] date in
-            self?.overlayTexts(at: date) ?? CarModeTexts(title: "Lyrics", current: "Niente in riproduzione", next: "")
-        }
     }
 
     /// Tasti rapidi nella schermata del testo: sposta l'anticipo di `delta` secondi (limitato a ±5 s).
@@ -153,7 +148,7 @@ final class NowPlayingViewModel {
         // L'audio silenzioso va avviato ORA, ad app aperta: iOS spesso non permette di avviarlo
         // quando l'app è già passata in background, e in quel caso Lyrics verrebbe sospesa
         // (Live Activity ferma su una riga). È un audio "mixWithOthers": non disturba Spotify.
-        if showLiveActivity || floating.opensAutomatically, auth.isAuthorized {
+        if showLiveActivity, auth.isAuthorized {
             keepAlive.start()
         } else {
             keepAlive.stop()
@@ -162,7 +157,6 @@ final class NowPlayingViewModel {
         // appena l'app è aperta ricarichiamo comunque il widget.
         widgetPublisher.invalidate()
         start()
-        floating.prepare() // finestra flottante pronta: si apre da sola quando esci, se attivato
         if currentTrackID != nil { refreshQueue() } // la coda può essere cambiata mentre eravamo chiusi
         applyIdleTimer()
     }
@@ -192,7 +186,7 @@ final class NowPlayingViewModel {
     /// iPhone bloccato o app in background: con la Live Activity attiva continuiamo a seguire il testo.
     func enterBackground() {
         isInBackground = true
-        guard showLiveActivity || floating.isActive || floating.opensAutomatically, auth.isAuthorized else {
+        guard showLiveActivity, auth.isAuthorized else {
             stop()
             return
         }
@@ -583,12 +577,6 @@ final class NowPlayingViewModel {
     /// Modalità auto aperta: lo schermo resta sempre acceso e Lyrics resta in primo piano,
     /// così iOS applica subito gli aggiornamenti di Live Activity (CarPlay) e widget.
     private(set) var isCarModeActive = false
-
-    /// Avvia l'audio silenzioso (serve alla finestra flottante e a restare attivi in sottofondo).
-    func startBackgroundAudio() {
-        guard auth.isAuthorized else { return }
-        keepAlive.start()
-    }
 
     func setCarMode(_ active: Bool) {
         isCarModeActive = active
