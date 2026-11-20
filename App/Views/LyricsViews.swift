@@ -37,12 +37,52 @@ struct LyricsContainer: View {
             }
 
             if case .loaded(let lyrics) = model.lyricsState {
+                if lyrics.isSynced {
+                    SyncNudgeBar()
+                }
                 Text(lyrics.isSynced ? "Testo sincronizzato · \(lyrics.source)" : "Testo non sincronizzato · \(lyrics.source)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .padding(.vertical, 6)
+                    .padding(.bottom, 6)
             }
         }
+    }
+}
+
+/// Tasti rapidi per correggere al volo un testo in ritardo o in anticipo.
+private struct SyncNudgeBar: View {
+    @Environment(NowPlayingViewModel.self) private var model
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button { model.nudgeSyncOffset(by: -0.5) } label: {
+                Label("Ritarda", systemImage: "minus")
+                    .labelStyle(.iconOnly)
+                    .frame(width: 36, height: 30)
+            }
+            .accessibilityLabel("Testo più tardi di mezzo secondo")
+
+            Button {
+                model.syncOffset = 0
+            } label: {
+                Text(String(format: "%+.2f s", model.syncOffset))
+                    .font(.caption.monospacedDigit())
+                    .frame(minWidth: 64)
+            }
+            .accessibilityLabel("Anticipo del testo, tocca per azzerare")
+
+            Button { model.nudgeSyncOffset(by: 0.5) } label: {
+                Label("Anticipa", systemImage: "plus")
+                    .labelStyle(.iconOnly)
+                    .frame(width: 36, height: 30)
+            }
+            .accessibilityLabel("Testo prima di mezzo secondo")
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .tint(.white)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
     }
 }
 

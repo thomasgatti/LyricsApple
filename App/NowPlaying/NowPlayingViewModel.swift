@@ -25,7 +25,11 @@ final class NowPlayingViewModel {
         static let syncOffset = "syncOffset"
         static let keepScreenOn = "keepScreenOn"
         static let showLiveActivity = "showLiveActivity"
+        static let liveActivityLead = "liveActivityLead"
     }
+
+    /// Anticipo predefinito per schermata di blocco e CarPlay: copre il tempo che iOS impiega a ridisegnarle.
+    static let defaultLiveActivityLead: TimeInterval = 0.5
 
     private(set) var playback: PlaybackState = .loading
     private(set) var lyricsState: LyricsState = .idle
@@ -52,6 +56,11 @@ final class NowPlayingViewModel {
         }
     }
 
+    /// Secondi di anticipo in più, solo per schermata di blocco e CarPlay (che si aggiornano con un po' di ritardo).
+    var liveActivityLead: TimeInterval {
+        didSet { UserDefaults.standard.set(liveActivityLead, forKey: Keys.liveActivityLead) }
+    }
+
     @ObservationIgnored private let liveActivity = LiveActivityController()
     @ObservationIgnored private let keepAlive = BackgroundKeepAlive()
     @ObservationIgnored private var isInBackground = false
@@ -73,6 +82,13 @@ final class NowPlayingViewModel {
         self.syncOffset = defaults.double(forKey: Keys.syncOffset)
         self.keepScreenOn = defaults.object(forKey: Keys.keepScreenOn) as? Bool ?? true
         self.showLiveActivity = defaults.object(forKey: Keys.showLiveActivity) as? Bool ?? true
+        self.liveActivityLead = defaults.object(forKey: Keys.liveActivityLead) as? Double ?? Self.defaultLiveActivityLead
+    }
+
+    /// Tasti rapidi nella schermata del testo: sposta l'anticipo di `delta` secondi (limitato a ±5 s).
+    func nudgeSyncOffset(by delta: TimeInterval) {
+        let rounded = ((syncOffset + delta) * 4).rounded() / 4 // passi di 0,25 s
+        syncOffset = min(5, max(-5, rounded))
     }
 
     // MARK: - Stato derivato
@@ -191,7 +207,7 @@ final class NowPlayingViewModel {
         let result = Self.liveActivityState(
             snapshot: snapshot,
             lyricsState: lyricsState,
-            position: playbackPosition(at: now),
+            position: playbackPosition(at: now) + liveActivityLead,
             now: now
         )
         if let state = result.state { liveActivity.show(state) }

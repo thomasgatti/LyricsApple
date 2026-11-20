@@ -59,6 +59,19 @@ final class LiveActivityStateTests: XCTestCase {
         XCTAssertFalse(a.isEquivalent(to: c))
     }
 
+    @MainActor
+    func testNudgeSyncOffsetRoundsAndClamps() {
+        let model = NowPlayingViewModel(auth: SpotifyAuthService())
+        let saved = model.syncOffset
+        defer { model.syncOffset = saved }
+        model.syncOffset = 0.1
+        model.nudgeSyncOffset(by: 0.5)
+        XCTAssertEqual(model.syncOffset, 0.5, accuracy: 0.001)
+        model.syncOffset = 4.75
+        model.nudgeSyncOffset(by: 0.5)
+        XCTAssertEqual(model.syncOffset, 5, accuracy: 0.001)
+    }
+
     func testBeforeFirstLineShowsMusicNote() throws {
         let state = try XCTUnwrap(NowPlayingViewModel.liveActivityState(snapshot: snapshot(), lyricsState: .loaded(lyrics), position: 2).state)
         XCTAssertEqual(state.currentLine, "♪")
