@@ -84,6 +84,13 @@ final class PreviewRenderTests: XCTestCase {
                 }
             }
 
+            section("CarPlay · riquadro accanto alla mappa (formato visto sulla C3)") {
+                HStack(spacing: 16) {
+                    activityTile(SmallLyricsView(state: activityState(current: long)), size: CGSize(width: 250, height: 80))
+                    activityTile(SmallLyricsView(state: activityState(current: "Fra, la mia tipa mi ha portato a cena perché aveva fame")), size: CGSize(width: 250, height: 80))
+                }
+            }
+
             section("Schermata di blocco · Live Activity  (sotto: quando Lyrics è stata sospesa)") {
                 VStack(spacing: 10) {
                     activityTile(LockScreenLyricsView(state: activityState(current: long)), size: CGSize(width: 370, height: 160))

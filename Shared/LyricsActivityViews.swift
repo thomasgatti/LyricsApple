@@ -26,31 +26,41 @@ struct SmallLyricsView: View {
     let state: LyricsActivityAttributes.ContentState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 4) {
-                Image(systemName: state.isPlaying ? "quote.bubble.fill" : "pause.fill")
-                    .font(.caption2)
-                    .foregroundStyle(LyricsPalette.accent)
-                Text(state.title)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .lineLimit(1)
+        GeometryReader { geometry in
+            // Nella schermata CarPlay con la mappa il riquadro è basso e largo: lì togliamo titolo e riga
+            // successiva (il titolo c'è già nel riquadro di Spotify) e lasciamo tutto lo spazio alla riga cantata,
+            // che va a capo e si rimpicciolisce quanto serve per stare intera, senza "…".
+            let compact = geometry.size.height < 120
+            VStack(alignment: .leading, spacing: compact ? 3 : 4) {
+                if !compact {
+                    HStack(spacing: 4) {
+                        Image(systemName: state.isPlaying ? "quote.bubble.fill" : "pause.fill")
+                            .font(.caption2)
+                            .foregroundStyle(LyricsPalette.accent)
+                        Text(state.title)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+                }
+                VStack(alignment: .leading, spacing: compact ? 3 : 4) {
+                    Text(state.currentLine)
+                        .font(.system(size: compact ? 20 : 30, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(compact ? 3 : 4)
+                        .minimumScaleFactor(0.35)
+                        .allowsTightening(true)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    KaraokeBar(state: state, height: compact ? 2 : 3)
+                    if !compact {
+                        FadedLineText(text: state.nextLine, size: 15, opacity: 0.55)
+                    }
+                }
+                .scrollingLines(state)
             }
-            VStack(alignment: .leading, spacing: 4) {
-                // Testo grande che occupa tutto lo spazio libero: si rimpicciolisce da solo solo se non ci sta.
-                Text(state.currentLine)
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(4)
-                    .minimumScaleFactor(0.45)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                KaraokeBar(state: state, height: 3)
-                FadedLineText(text: state.nextLine, size: 15, opacity: 0.55)
-            }
-            .scrollingLines(state)
+            .padding(compact ? 6 : 8)
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(8)
         .foregroundStyle(.white)
     }
 }
