@@ -21,8 +21,8 @@ struct LyricsWidget: Widget {
 }
 
 struct LyricsTimelineProvider: TimelineProvider {
-    /// Limite prudente di voci per timeline (un brano ha in genere 40-90 righe).
-    private let maxEntries = 180
+    /// Limite prudente di voci per timeline (4 canzoni da 40-90 righe ciascuna).
+    private let maxEntries = 500
 
     func placeholder(in context: Context) -> LyricsEntry {
         LyricsEntry(date: .now, content: .placeholder)

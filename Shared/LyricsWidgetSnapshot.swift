@@ -42,6 +42,9 @@ struct LyricsWidgetSnapshot: Codable, Equatable {
     struct Line: Codable, Equatable {
         var start: Date
         var text: String
+        /// Titolo e artista se la riga appartiene a una canzone successiva (nil = canzone attuale).
+        var title: String? = nil
+        var artist: String? = nil
     }
 
     static let kind = "LyricsWidget"

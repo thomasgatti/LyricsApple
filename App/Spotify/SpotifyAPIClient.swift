@@ -44,6 +44,15 @@ final class SpotifyAPIClient {
         }
     }
 
+    /// Prossime canzoni nella coda di Spotify (al massimo `limit`).
+    func upcomingTracks(limit: Int) async throws -> [Track] {
+        let (data, response, _) = try await get(Self.queueURL, allowRetry: true)
+        guard response.statusCode == 200, !data.isEmpty else { return [] }
+        return Array(try QueueDTO.decode(data).upcomingTracks.prefix(limit))
+    }
+
+    private static let queueURL = URL(string: "https://api.spotify.com/v1/me/player/queue")!
+
     private func get(_ url: URL, allowRetry: Bool) async throws -> (Data, HTTPURLResponse, Date) {
         let token = try await auth.validAccessToken()
         var request = URLRequest(url: url)

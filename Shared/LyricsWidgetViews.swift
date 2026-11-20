@@ -120,8 +120,9 @@ struct WidgetTexts {
             isPlaying = snapshot.isPlaying
             isMessage = true
         case let .line(snapshot, index):
-            title = snapshot.title
-            artist = snapshot.artist
+            let song = index.flatMap { snapshot.lines.indices.contains($0) ? snapshot.lines[$0] : nil }
+            title = song?.title ?? snapshot.title
+            artist = song?.artist ?? snapshot.artist
             current = index == nil ? "♪" : snapshot.text(at: index)
             let next = snapshot.nextNonEmptyIndex(after: index)
             self.next = snapshot.text(at: next)

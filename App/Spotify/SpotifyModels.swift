@@ -40,6 +40,8 @@ struct CurrentlyPlayingDTO: Decodable {
     struct ItemDTO: Decodable {
         let id: String?
         let uri: String?
+        /// "track" o "episode" (podcast).
+        let type: String?
         let name: String
         let durationMs: Int?
         let artists: [ArtistDTO]?
@@ -66,22 +68,48 @@ struct CurrentlyPlayingDTO: Decodable {
     }
 }
 
+extension Track {
+    init(item: CurrentlyPlayingDTO.ItemDTO) {
+        let images = item.album?.images ?? []
+        let artwork = images.max { ($0.width ?? 0) < ($1.width ?? 0) }
+        self.init(
+            id: item.id ?? item.uri ?? "local:\(item.name)",
+            title: item.name,
+            artists: item.artists?.map(\.name) ?? [],
+            album: item.album?.name ?? "",
+            duration: TimeInterval(item.durationMs ?? 0) / 1000,
+            artworkURL: artwork.flatMap { URL(string: $0.url) },
+            spotifyURL: item.externalUrls?["spotify"].flatMap { URL(string: $0) }
+        )
+    }
+}
+
+// MARK: - DTO JSON (GET /v1/me/player/queue)
+
+/// Coda di riproduzione: le canzoni che Spotify suonerà dopo quella attuale.
+struct QueueDTO: Decodable {
+    let queue: [CurrentlyPlayingDTO.ItemDTO]?
+
+    /// Solo brani musicali, nell'ordine in cui verranno suonati.
+    var upcomingTracks: [Track] {
+        (queue ?? [])
+            .filter { ($0.type ?? "track") == "track" && ($0.durationMs ?? 0) > 0 }
+            .map(Track.init(item:))
+    }
+
+    static func decode(_ data: Data) throws -> QueueDTO {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try decoder.decode(QueueDTO.self, from: data)
+    }
+}
+
 extension PlaybackSnapshot {
     init(dto: CurrentlyPlayingDTO, receivedAt: Date) {
         var track: Track?
         // Gestiamo solo brani musicali (non podcast o pubblicità).
         if let item = dto.item, dto.currentlyPlayingType == nil || dto.currentlyPlayingType == "track" {
-            let images = item.album?.images ?? []
-            let artwork = images.max { ($0.width ?? 0) < ($1.width ?? 0) }
-            track = Track(
-                id: item.id ?? item.uri ?? "local:\(item.name)",
-                title: item.name,
-                artists: item.artists?.map(\.name) ?? [],
-                album: item.album?.name ?? "",
-                duration: TimeInterval(item.durationMs ?? 0) / 1000,
-                artworkURL: artwork.flatMap { URL(string: $0.url) },
-                spotifyURL: item.externalUrls?["spotify"].flatMap { URL(string: $0) }
-            )
+            track = Track(item: item)
         }
         self.init(
             track: track,

@@ -80,6 +80,51 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertTrue(stale.nextLine.contains("apri Lyrics"))
     }
 
+    func testUpcomingSongsAreChainedAfterCurrentOne() throws {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let next = Track(id: "n", title: "Dopo", artists: ["Altro"], album: "B",
+                         duration: 100, artworkURL: nil, spotifyURL: nil)
+        let later = Track(id: "l", title: "Ancora", artists: ["Terzo"], album: "C",
+                          duration: 90, artworkURL: nil, spotifyURL: nil)
+        let widget = try XCTUnwrap(NowPlayingViewModel.widgetSnapshot(
+            snapshot: playback(true), lyricsState: .loaded(lyrics), position: 12, now: now,
+            upcoming: [.init(track: next, lyrics: .lyrics(lyrics)), .init(track: later, lyrics: .notFound)]
+        ))
+        // Canzone attuale: 3 righe. Poi "Dopo" inizia alla fine di quella attuale (200 - 12 = +188 s).
+        XCTAssertEqual(widget.lines[3].title, "Dopo")
+        XCTAssertEqual(widget.lines[3].start.timeIntervalSince(now), 188, accuracy: 0.001)
+        XCTAssertEqual(widget.lines[4].text, "Prima")
+        XCTAssertEqual(widget.lines[4].start.timeIntervalSince(now), 198, accuracy: 0.001)
+        // "Ancora" parte dopo i 100 s di "Dopo" e non ha testo.
+        let laterLines = widget.lines.filter { $0.title == "Ancora" }
+        XCTAssertEqual(laterLines.first?.start.timeIntervalSince(now) ?? 0, 288, accuracy: 0.001)
+        XCTAssertEqual(laterLines.last?.text, "Testo non disponibile")
+        XCTAssertEqual(try XCTUnwrap(widget.songEnd).timeIntervalSince(now), 378, accuracy: 0.001)
+    }
+
+    func testUpcomingStopsAtSongWithoutDownloadedLyrics() throws {
+        let next = Track(id: "n", title: "Dopo", artists: ["Altro"], album: "B",
+                         duration: 100, artworkURL: nil, spotifyURL: nil)
+        let widget = try XCTUnwrap(NowPlayingViewModel.widgetSnapshot(
+            snapshot: playback(true), lyricsState: .loaded(lyrics), position: 12, now: Date(),
+            upcoming: [.init(track: next, lyrics: nil)]
+        ))
+        XCTAssertEqual(widget.lines.count, 3)
+    }
+
+    func testQueueDecodingKeepsOnlyMusicTracks() throws {
+        let json = """
+        {"currently_playing": null, "queue": [
+          {"id": "a", "type": "track", "name": "Uno", "duration_ms": 180000, "artists": [{"name": "X"}], "album": {"name": "Al", "images": []}},
+          {"id": "e", "type": "episode", "name": "Podcast", "duration_ms": 900000},
+          {"id": "b", "type": "track", "name": "Due", "duration_ms": 200000, "artists": [{"name": "Y"}]}
+        ]}
+        """
+        let tracks = try QueueDTO.decode(Data(json.utf8)).upcomingTracks
+        XCTAssertEqual(tracks.map(\.title), ["Uno", "Due"])
+        XCTAssertEqual(tracks.first?.duration ?? 0, 180, accuracy: 0.001)
+    }
+
     func testSaveAndLoadRoundTrip() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "WidgetSnapshotTests"))
         defer { defaults.removePersistentDomain(forName: "WidgetSnapshotTests") }

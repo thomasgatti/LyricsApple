@@ -78,6 +78,9 @@ final class NowPlayingViewModel {
     @ObservationIgnored private var pollTask: Task<Void, Never>?
     @ObservationIgnored private var lyricsTask: Task<Void, Never>?
     @ObservationIgnored private var currentTrackID: String?
+    /// Prossime canzoni della coda di Spotify con i testi già scaricati (per il widget).
+    @ObservationIgnored private var upcoming: [UpcomingSong] = []
+    @ObservationIgnored private var queueTask: Task<Void, Never>?
     @ObservationIgnored private var consecutiveErrors = 0
 
     init(auth: SpotifyAuthService, lyricsProvider: any LyricsProvider = LRCLIBProvider()) {
@@ -146,6 +149,7 @@ final class NowPlayingViewModel {
         // Live Activity ricreata da zero: se iOS aveva smesso di aggiornarla, ora riparte.
         liveActivity.restart()
         start()
+        if currentTrackID != nil { refreshQueue() } // la coda può essere cambiata mentre eravamo chiusi
         applyIdleTimer()
     }
 
@@ -208,6 +212,8 @@ final class NowPlayingViewModel {
         liveActivity.end()
         widgetPublisher.publish(nil)
         lyricsTask?.cancel()
+        queueTask?.cancel()
+        upcoming = []
         currentTrackID = nil
         playback = .loading
         lyricsState = .idle
@@ -262,12 +268,85 @@ final class NowPlayingViewModel {
             snapshot: snapshot,
             lyricsState: lyricsState,
             position: playbackPosition(at: now) + liveActivityLead,
-            now: now
+            now: now,
+            upcoming: upcoming
         ))
+    }
+
+    /// Legge la coda di Spotify e scarica in anticipo i testi delle prossime canzoni.
+    private func refreshQueue() {
+        queueTask?.cancel()
+        let api = api
+        let service = lyricsService
+        let trackID = currentTrackID
+        queueTask = Task { [weak self] in
+            guard let tracks = try? await api.upcomingTracks(limit: 3), !Task.isCancelled else { return }
+            guard let self, self.currentTrackID == trackID else { return }
+            let known = Dictionary(self.upcoming.map { ($0.track.id, $0.lyrics) }, uniquingKeysWith: { first, _ in first })
+            self.upcoming = tracks.map { UpcomingSong(track: $0, lyrics: known[$0.id] ?? nil) }
+            for (index, song) in self.upcoming.enumerated() where song.lyrics == nil {
+                let result = (try? await service.lyrics(for: song.track, bypassCache: false)) ?? .notFound
+                guard !Task.isCancelled, self.currentTrackID == trackID,
+                      self.upcoming.indices.contains(index), self.upcoming[index].track.id == song.track.id
+                else { return }
+                self.upcoming[index].lyrics = result
+            }
+        }
     }
 
     /// Dati per il widget: righe con l'orario (sull'orologio dell'iPhone) in cui iniziano.
     nonisolated static func widgetSnapshot(
+        snapshot: PlaybackSnapshot?,
+        lyricsState: LyricsState,
+        position: TimeInterval,
+        now: Date,
+        upcoming: [UpcomingSong] = []
+    ) -> LyricsWidgetSnapshot? {
+        guard var widget = currentSongWidgetSnapshot(
+            snapshot: snapshot, lyricsState: lyricsState, position: position, now: now
+        ) else { return nil }
+        guard widget.isPlaying, !upcoming.isEmpty, let songEnd = widget.songEnd else { return widget }
+
+        // Il widget va avanti da solo anche quando la canzone attuale non ha testo sincronizzato.
+        if let status = widget.statusLine {
+            widget.lines = [.init(start: now.addingTimeInterval(-position), text: status)]
+            widget.statusLine = nil
+        }
+        // Accodiamo le prossime canzoni, ciascuna all'orario in cui inizierà: quando una finisce,
+        // il widget passa da solo alla successiva, senza bisogno che Lyrics lo aggiorni.
+        var cursor = songEnd
+        for song in upcoming {
+            guard let result = song.lyrics else { break } // testo non ancora scaricato: ci fermiamo qui
+            let start = cursor
+            let title = song.track.title
+            let artist = song.track.artistLine
+            widget.lines.append(.init(start: start, text: "", title: title, artist: artist))
+            switch result {
+            case .lyrics(let lyrics) where lyrics.isSynced:
+                widget.lines += lyrics.lines.compactMap { line in
+                    guard let time = line.time, time > 0 else { return nil }
+                    return .init(start: start.addingTimeInterval(time), text: line.text, title: title, artist: artist)
+                }
+            case .lyrics:
+                widget.lines.append(.init(start: start.addingTimeInterval(0.01), text: "Testo non sincronizzato", title: title, artist: artist))
+            case .instrumental:
+                widget.lines.append(.init(start: start.addingTimeInterval(0.01), text: "♪ Brano strumentale", title: title, artist: artist))
+            case .notFound:
+                widget.lines.append(.init(start: start.addingTimeInterval(0.01), text: "Testo non disponibile", title: title, artist: artist))
+            }
+            cursor = start.addingTimeInterval(song.track.duration)
+        }
+        widget.songEnd = cursor
+        return widget
+    }
+
+    /// Canzone successiva nella coda di Spotify, con il suo testo (nil = non ancora scaricato).
+    struct UpcomingSong: Equatable {
+        let track: Track
+        var lyrics: LyricsResult?
+    }
+
+    private nonisolated static func currentSongWidgetSnapshot(
         snapshot: PlaybackSnapshot?,
         lyricsState: LyricsState,
         position: TimeInterval,
@@ -420,6 +499,7 @@ final class NowPlayingViewModel {
             if track.id != currentTrackID {
                 currentTrackID = track.id
                 loadLyrics(for: track, bypassCache: false)
+                refreshQueue()
             }
             return Self.nextPollDelay(for: snapshot, now: Date())
         } catch let error as SpotifyAuthError {
