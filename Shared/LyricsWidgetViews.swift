@@ -148,14 +148,14 @@ struct WidgetLyricsLayout: View {
                 Text(texts.current)
                     .font(.system(size: texts.isMessage ? currentSize * 0.85 : currentSize, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(extraLines ? 2 : 3)
-                    .minimumScaleFactor(0.75)
+                    .lineLimit(extraLines ? 2 : 4)
+                    .minimumScaleFactor(0.7)
                     .fixedSize(horizontal: false, vertical: true)
                 if !texts.next.isEmpty {
                     Text(texts.next)
                         .font(.system(size: currentSize * 0.62, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.5))
-                        .lineLimit(extraLines ? 1 : 2)
+                        .lineLimit(1)
                 }
                 if extraLines, !texts.afterNext.isEmpty {
                     Text(texts.afterNext)
