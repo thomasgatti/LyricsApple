@@ -26,6 +26,7 @@ final class NowPlayingViewModel {
         static let keepScreenOn = "keepScreenOn"
         static let showLiveActivity = "showLiveActivity"
         static let liveActivityLead = "liveActivityLead"
+        static let widgetUpdatesInBackground = "widgetUpdatesInBackground"
     }
 
     /// Anticipo predefinito per schermata di blocco e CarPlay: copre il tempo che iOS impiega a ridisegnarle.
@@ -61,6 +62,12 @@ final class NowPlayingViewModel {
         }
     }
 
+    /// Se `false` (predefinito) il widget viene ricaricato solo con Lyrics aperta: in sottofondo
+    /// lasciamo a iOS tutta la "capacità" per la Live Activity.
+    var widgetUpdatesInBackground: Bool {
+        didSet { UserDefaults.standard.set(widgetUpdatesInBackground, forKey: Keys.widgetUpdatesInBackground) }
+    }
+
     /// Secondi di anticipo in più, solo per schermata di blocco e CarPlay (che si aggiornano con un po' di ritardo).
     var liveActivityLead: TimeInterval {
         didSet { UserDefaults.standard.set(liveActivityLead, forKey: Keys.liveActivityLead) }
@@ -94,6 +101,7 @@ final class NowPlayingViewModel {
         self.keepScreenOn = defaults.object(forKey: Keys.keepScreenOn) as? Bool ?? true
         self.showLiveActivity = defaults.object(forKey: Keys.showLiveActivity) as? Bool ?? true
         self.liveActivityLead = defaults.object(forKey: Keys.liveActivityLead) as? Double ?? Self.defaultLiveActivityLead
+        self.widgetUpdatesInBackground = defaults.object(forKey: Keys.widgetUpdatesInBackground) as? Bool ?? false
     }
 
     /// Tasti rapidi nella schermata del testo: sposta l'anticipo di `delta` secondi (limitato a ±5 s).
@@ -266,6 +274,10 @@ final class NowPlayingViewModel {
     }
 
     private func publishWidget(now: Date) {
+        // Esperimento: le ricariche del widget fatte in sottofondo potrebbero "rubare" a iOS gli aggiornamenti
+        // della Live Activity (le disegna la stessa estensione). Se disattivate, il widget si aggiorna solo ad
+        // app aperta e per il resto segue da solo la sua scaletta.
+        if isInBackground, !widgetUpdatesInBackground { return }
         widgetPublisher.publish(inBackground: isInBackground, Self.widgetSnapshot(
             snapshot: snapshot,
             lyricsState: lyricsState,

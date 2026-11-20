@@ -61,6 +61,14 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Aggiorna il widget anche in sottofondo", isOn: $bindableModel.widgetUpdatesInBackground)
+                } header: {
+                    Text("Widget")
+                } footer: {
+                    Text("Spento: il widget si aggiorna quando apri Lyrics e per il resto segue da solo la scaletta delle prossime canzoni; la schermata di blocco ha la precedenza. Acceso: prova a seguire anche salti e cambi di canzone, ma iOS potrebbe rallentare la schermata di blocco.")
+                }
+
+                Section {
                     LabeledContent("Widget (App Group)", value: model.appGroupName == nil ? "Non disponibile" : "Attivo")
                     LabeledContent("Ultimo aggiornamento widget", value: Self.time(model.lastWidgetReload))
                     LabeledContent("Ultimo controllo a iPhone bloccato", value: Self.time(model.lastBackgroundPoll))
