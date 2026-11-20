@@ -52,7 +52,12 @@ final class NowPlayingViewModel {
     var showLiveActivity: Bool {
         didSet {
             UserDefaults.standard.set(showLiveActivity, forKey: Keys.showLiveActivity)
-            if !showLiveActivity { liveActivity.end() }
+            if !showLiveActivity {
+                liveActivity.end()
+                keepAlive.stop()
+            } else if !isInBackground, auth.isAuthorized {
+                keepAlive.start()
+            }
         }
     }
 
@@ -124,10 +129,17 @@ final class NowPlayingViewModel {
         applyIdleTimer()
     }
 
-    /// L'app torna in primo piano: non serve più l'audio silenzioso.
+    /// L'app torna in primo piano: riparte il controllo su Spotify e (con la Live Activity) l'audio silenzioso.
     func enterForeground() {
         isInBackground = false
-        keepAlive.stop()
+        // L'audio silenzioso va avviato ORA, ad app aperta: iOS spesso non permette di avviarlo
+        // quando l'app è già passata in background, e in quel caso Lyrics verrebbe sospesa
+        // (Live Activity ferma su una riga). È un audio "mixWithOthers": non disturba Spotify.
+        if showLiveActivity, auth.isAuthorized {
+            keepAlive.start()
+        } else {
+            keepAlive.stop()
+        }
         // Le richieste di aggiornamento fatte in background iOS può rimandarle o ignorarle:
         // appena l'app è aperta ricarichiamo comunque il widget.
         widgetPublisher.invalidate()
