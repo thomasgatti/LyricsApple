@@ -48,11 +48,19 @@ struct SettingsView: View {
                                 model.liveActivityLead = NowPlayingViewModel.defaultLiveActivityLead
                             }
                         }
+                        Stepper(value: $bindableModel.lockedUpdateInterval, in: 1...8, step: 0.5) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Aggiornamento a iPhone bloccato")
+                                Text(String(format: "al massimo ogni %.1f secondi", model.lockedUpdateInterval))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 } header: {
                     Text("Live Activity")
                 } footer: {
-                    Text("Mostra la riga in corso sulla schermata di blocco, nella Dynamic Island e, con iOS 26, sullo schermo CarPlay. Continua anche a iPhone bloccato (Lyrics resta attiva in sottofondo con un audio silenzioso: consuma un po' più di batteria). Si ferma da sola dopo 10 minuti senza musica. L'anticipo extra compensa il tempo che iOS impiega ad aggiornarla e si somma all'anticipo del testo. Da usare solo ad auto ferma o per i passeggeri.")
+                    Text("Mostra la riga in corso sulla schermata di blocco, nella Dynamic Island e, con iOS 26, sullo schermo CarPlay. Continua anche a iPhone bloccato (Lyrics resta attiva in sottofondo con un audio silenzioso: consuma un po' più di batteria). Si ferma da sola dopo 10 minuti senza musica. L'anticipo extra compensa il tempo che iOS impiega ad aggiornarla e si somma all'anticipo del testo. \"Aggiornamento a iPhone bloccato\" vale anche quando sei in un'altra app: più basso è più fluido, ma se il testo si blocca rialzalo. Da usare solo ad auto ferma o per i passeggeri.")
                 }
 
                 Section("Sicurezza") {

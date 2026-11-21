@@ -16,7 +16,9 @@ final class LiveActivityController {
 
     static let heartbeat: TimeInterval = 30
     static let staleAfter: TimeInterval = 75
-    static let backgroundMinInterval: TimeInterval = 6
+    static let defaultBackgroundMinInterval: TimeInterval = 4
+    /// Distanza minima tra due aggiornamenti a iPhone bloccato o in un'altra app (regolabile in Impostazioni).
+    var backgroundMinInterval: TimeInterval = LiveActivityController.defaultBackgroundMinInterval
 
     private var activity: Activity<LyricsActivityAttributes>?
     private var lastState: State?
@@ -55,7 +57,10 @@ final class LiveActivityController {
     private(set) var backgroundUpdates = 0
     private(set) var lastBackgroundUpdate: Date?
 
-    func show(_ state: State, now: Date = Date(), inBackground: Bool = false) {
+    /// Restituisce dopo quanti secondi riprovare se l'aggiornamento è stato rimandato per il limite
+    /// a iPhone bloccato: così la riga scartata arriva appena possibile, non alla riga successiva.
+    @discardableResult
+    func show(_ state: State, now: Date = Date(), inBackground: Bool = false) -> TimeInterval? {
         if needsRestart {
             needsRestart = false
             endAll(except: nil)
@@ -75,14 +80,14 @@ final class LiveActivityController {
 
         if let lastState, state.isEquivalent(to: lastState), activity != nil,
            let lastSent, now.timeIntervalSince(lastSent) < Self.heartbeat {
-            return
+            return nil
         }
         // Con l'iPhone bloccato iOS accetta solo pochi aggiornamenti: li diradiamo (al massimo uno ogni
         // `backgroundMinInterval` secondi) tenendo subito quelli importanti (nuova canzone, pausa/ripresa).
         if inBackground, activity != nil, let lastState, let lastSent,
            lastState.title == state.title, lastState.isPlaying == state.isPlaying,
-           now.timeIntervalSince(lastSent) < Self.backgroundMinInterval {
-            return
+           now.timeIntervalSince(lastSent) < backgroundMinInterval {
+            return backgroundMinInterval - now.timeIntervalSince(lastSent)
         }
         lastState = state
         lastSent = now
@@ -97,11 +102,11 @@ final class LiveActivityController {
                 await activity.update(content)
                 self.lastUpdate = Date()
             }
-            return
+            return nil
         }
         guard isAllowedBySystem else {
             lastError = "Live Activity disattivate nelle Impostazioni di iOS"
-            return
+            return nil
         }
         do {
             activity = try Activity.request(
@@ -117,6 +122,7 @@ final class LiveActivityController {
             lastSent = nil
             lastError = error.localizedDescription
         }
+        return nil
     }
 
     func end() {

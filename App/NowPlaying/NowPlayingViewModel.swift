@@ -26,6 +26,7 @@ final class NowPlayingViewModel {
         static let keepScreenOn = "keepScreenOn"
         static let showLiveActivity = "showLiveActivity"
         static let liveActivityLead = "liveActivityLead"
+        static let lockedUpdateInterval = "lockedUpdateInterval"
         static let widgetUpdatesInBackground = "widgetUpdatesInBackground"
     }
 
@@ -73,6 +74,15 @@ final class NowPlayingViewModel {
         didSet { UserDefaults.standard.set(liveActivityLead, forKey: Keys.liveActivityLead) }
     }
 
+    /// Secondi minimi tra due aggiornamenti della Live Activity a iPhone bloccato o in un'altra app.
+    /// Più basso = più fluido, ma se iOS riceve troppi aggiornamenti smette di applicarli.
+    var lockedUpdateInterval: TimeInterval {
+        didSet {
+            UserDefaults.standard.set(lockedUpdateInterval, forKey: Keys.lockedUpdateInterval)
+            liveActivity.backgroundMinInterval = lockedUpdateInterval
+        }
+    }
+
     @ObservationIgnored private let liveActivity = LiveActivityController()
     @ObservationIgnored private let widgetPublisher = WidgetPublisher()
     @ObservationIgnored private let keepAlive = BackgroundKeepAlive()
@@ -102,6 +112,9 @@ final class NowPlayingViewModel {
         self.showLiveActivity = defaults.object(forKey: Keys.showLiveActivity) as? Bool ?? true
         self.liveActivityLead = defaults.object(forKey: Keys.liveActivityLead) as? Double ?? Self.defaultLiveActivityLead
         self.widgetUpdatesInBackground = defaults.object(forKey: Keys.widgetUpdatesInBackground) as? Bool ?? false
+        self.lockedUpdateInterval = defaults.object(forKey: Keys.lockedUpdateInterval) as? Double
+            ?? LiveActivityController.defaultBackgroundMinInterval
+        liveActivity.backgroundMinInterval = lockedUpdateInterval
     }
 
     /// Tasti rapidi nella schermata del testo: sposta l'anticipo di `delta` secondi (limitato a ±5 s).
@@ -267,7 +280,10 @@ final class NowPlayingViewModel {
             position: playbackPosition(at: now) + liveActivityLead,
             now: now
         )
-        if let state = result.state { liveActivity.show(state, inBackground: isInBackground) }
+        if let state = result.state,
+           let retry = liveActivity.show(state, inBackground: isInBackground) {
+            return min(result.nextChange, retry + 0.05)
+        }
         return result.nextChange
     }
 
